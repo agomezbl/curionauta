@@ -16,10 +16,10 @@ en el propio aparato, sin cuentas ni servidores de por medio.
 
 ## Cómo se publica
 
-Cloudflare Pages, conectado a este repositorio:
+Cloudflare Workers, conectado a este repositorio (`wrangler.jsonc`):
 
-- Orden de compilación: `bash tools/montar.sh`
-- Carpeta de salida: `dist`
+- Antes de publicar, wrangler ejecuta `bash tools/montar.sh`
+- Publica la carpeta `dist` · dirección gratuita: `curionauta.agomez-saturno.workers.dev`
 
 `tools/montar.sh` copia `site/` y descarga los juegos desde sus propios repositorios de GitHub
 (`chrono-ohm`, `expedicion-pitagoras`, `PHYLOQUEST`, `UMBRAL-D-D-QUEST` y `RutinatorV3`), así cada juego tiene una sola

@@ -15,21 +15,17 @@ Para hacerlo una sola vez. Unos 20 minutos. No hace falta saber programar.
 2. Repository name: `curionauta` · **Public** · no marques nada más · **Create repository**.
 3. Avisa a Claude: sube el código y comprueba que todo está.
 
-## 3. La web (Cloudflare Pages)
+## 3. La web (Cloudflare Workers) — hecho
 
-1. Cloudflare → menú izquierdo → **Workers & Pages** → **Create application** → pestaña **Pages** → **Connect to Git**.
-2. La primera vez pide **conectar GitHub**: elige *Only select repositories* → `curionauta` → **Install & Authorize**.
-3. Elige el repositorio `curionauta` → **Begin setup**.
-4. Rellena exactamente:
-   - Project name: `curionauta`
-   - Production branch: `main`
-   - Framework preset: **None**
-   - Build command: `bash tools/montar.sh`
-   - Build output directory: `dist`
-5. **Save and Deploy**. Tarda 2–3 minutos. Al acabar da una dirección provisional tipo `curionauta.pages.dev`: ábrela y comprueba que sale la web.
-6. En el proyecto → pestaña **Custom domains** → **Set up a custom domain** → `curionauta.com` → **Continue → Activate domain**.
-   Repite con `www.curionauta.com`.
-7. En unos minutos `https://curionauta.com` funciona, con candado.
+1. Cloudflare → **Workers & Pages** → **Create** → **Import a repository** → `curionauta`. La orden de publicar
+   (`npx wrangler deploy`) se deja como viene: `wrangler.jsonc` ya le dice que monte la web con `tools/montar.sh`
+   y publique la carpeta `dist`.
+2. Cada vez que Claude sube un cambio a GitHub, Cloudflare vuelve a montar y publicar solo (2–3 minutos).
+   Se ve en el Worker → pestaña **Deployments**.
+3. Dirección gratuita: `https://curionauta.agomez-saturno.workers.dev` (Settings → Domains & Routes →
+   *Production* encendido; *Preview* apagado).
+4. Cuando tengas el dominio: Settings → **Domains & Routes** → **Add → Custom domain** → `curionauta.com`,
+   y otra vez con `www.curionauta.com`. En unos minutos funciona con candado.
 
 ## 4. Correo de contacto (gratis, opcional pero recomendado)
 
