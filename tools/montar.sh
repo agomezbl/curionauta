@@ -1,0 +1,29 @@
+#!/bin/bash
+# Monta la web completa de curionauta.com en dist/:
+#   site/            → la web pública, la Estación, los textos legales y los tipos de letra
+#   juegos de GitHub → dist/juegos/<nombre>/ (se descargan en cada publicación: una sola fuente)
+# Cloudflare Pages lo ejecuta en cada publicación (orden de compilación: bash tools/montar.sh,
+# carpeta de salida: dist). En local, con LOCAL=/carpeta/con/los/repos usa copias ya descargadas.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+OUT=dist
+rm -rf "$OUT"; mkdir -p "$OUT"
+cp -r site/. "$OUT/"
+STAMP=$(date -u +%Y%m%d%H%M)
+sed -i "s/__V__/$STAMP/" "$OUT/estacion/sw.js"
+
+JUEGOS="chrono-ohm:chrono-ohm pitagoras:expedicion-pitagoras philoquest:PHYLOQUEST umbral:UMBRAL-D-D-QUEST"
+for par in $JUEGOS; do
+  id=${par%%:*}; repo=${par##*:}; dest="$OUT/juegos/$id"
+  if [ -n "${LOCAL:-}" ] && [ -d "$LOCAL/$repo" ]; then src="$LOCAL/$repo"
+  else src=$(mktemp -d); git clone -q --depth 1 "https://github.com/agomezbl/$repo.git" "$src"; fi
+  mkdir -p "$dest"
+  (cd "$src" && git ls-files) | grep -Ev '^(src|tools|i18n|lab|tests|shots|tienda|licenses-src|node_modules)/|(^|/)(package(-lock)?\.json|[^/]*\.py|[^/]*\.md|\.gitignore|\.nojekyll)$' \
+    | while IFS= read -r f; do mkdir -p "$dest/$(dirname "$f")"; cp "$src/$f" "$dest/$f"; done
+  echo "  juego $id: $(find "$dest" -type f | wc -l) archivos"
+done
+
+N=$(find "$OUT" -type f | wc -l); GORDO=$(find "$OUT" -type f -size +25M | wc -l)
+echo "dist: $N archivos ($(du -sh "$OUT" | cut -f1)), sw estación $STAMP"
+[ "$N" -lt 20000 ] || { echo "ERROR: más de 20.000 archivos (límite de Cloudflare Pages)"; exit 1; }
+[ "$GORDO" -eq 0 ] || { echo "ERROR: hay archivos de más de 25 MB"; exit 1; }
