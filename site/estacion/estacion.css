@@ -3,7 +3,7 @@
 @font-face{font-family:"Unbounded";src:url(../fonts/unbounded-latin-800-normal.woff2) format("woff2");font-weight:800;font-display:swap}
 :root{
   --bg:#0b1020;--bg2:#0f1629;--card:#141c33;--card2:#1a2441;--line:#26324f;--line2:#33426a;
-  --ink:#eef2fb;--dim:#a9b4cf;--faint:#6f7c9c;
+  --ink:#eef2fb;--dim:#a9b4cf;--faint:#8a95b3;
   --cu:#f2a65a;--cu-d:#b8733d;--cy:#5ee0ff;--ok:#4fd18b;--bad:#ff6b5f;--vi:#b9a7ff;--gold:#ffd27a;
   --r:18px;--sh:0 10px 30px rgba(0,0,0,.35);
   --f:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--fd:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--fm:ui-monospace,Menlo,Consolas,monospace;
@@ -152,8 +152,8 @@ nav.bottom a.on{color:var(--ink);background:var(--card)}nav.bottom svg{width:24p
 .badge.on{border-color:var(--gold);color:var(--dim)}.badge.on b{color:var(--gold)}
 .badge .bi{font-size:24px;filter:grayscale(1);opacity:.5}.badge.on .bi{filter:none;opacity:1}
 /* zona de padres */
-.tabs{display:flex;gap:6px;margin:10px 0}
-.tabs button{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);cursor:pointer;font:700 14px var(--fd);color:var(--dim)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.tabs button{min-height:40px;padding:0 12px;white-space:nowrap;border-radius:999px;border:1px solid var(--line2);background:var(--bg2);cursor:pointer;font:700 14px var(--fd);color:var(--dim)}
 .tabs button[aria-selected="true"]{background:var(--cy);color:#04121a;border-color:transparent}
 .rev textarea{width:100%;min-height:60px;margin-top:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);outline:none}
 .rev .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}

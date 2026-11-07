@@ -22,6 +22,18 @@ for par in $JUEGOS; do
   mkdir -p "$dest"
   (cd "$src" && git ls-files) | grep -Ev '^(src|tools|i18n|lab|tests|shots|tienda|licenses-src|node_modules)/|(^|/)(package(-lock)?\.json|[^/]*\.py|[^/]*\.md|\.gitignore|\.nojekyll)$' \
     | while IFS= read -r f; do mkdir -p "$dest/$(dirname "$f")"; cp "$src/$f" "$dest/$f"; done
+  # la pestaña «Volver a la Estación» en la página principal de cada juego (y de Rutinator)
+  if [ -f "$dest/index.html" ]; then
+    python3 - "$dest/index.html" <<'PY'
+import sys
+p = sys.argv[1]; s = open(p, encoding='utf-8').read()
+tag = '<script src="/comun/volver.js" defer></script>'
+if tag not in s:
+    i = s.lower().rfind('</body>')
+    s = s[:i] + tag + '\n' + s[i:] if i >= 0 else s + tag
+    open(p, 'w', encoding='utf-8').write(s)
+PY
+  fi
   echo "  $id: $(find "$dest" -type f | wc -l) archivos"
 done
 

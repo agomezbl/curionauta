@@ -18,9 +18,9 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 
 /* ---------------- estado guardado en este aparato ---------------- */
 const DEF = { mode: '', device: uid(), links: null, notes: [], localPin: '', cache: {}, pending: [],
-  lang: '', mentor: '', seen: {}, bita: [], qi: {}, refl: [], shown: {}, mentorOff: false };
+  lang: '', mentor: '', seen: {}, bita: [], qi: {}, refl: [], shown: {}, mentorOff: false, hist: {} };
 let S; try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { S = Object.assign({}, DEF); }
-['seen', 'qi', 'shown', 'cache'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+['seen', 'qi', 'shown', 'cache', 'hist'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
 ['bita', 'refl', 'notes', 'pending'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
@@ -124,6 +124,16 @@ const I = {
   'p.mentorOn': ['Preguntas del mentor activadas en este aparato', 'Questions du mentor activées sur cet appareil'],
   'p.mentorOff': ['Preguntas del mentor en pausa en este aparato', 'Questions du mentor en pause sur cet appareil'],
   'p.toggle': ['Cambiar', 'Changer'], 'p.how': ['Cómo puntuar: 10 si contestó pensando, 25 si explicó el porqué, 50 si te sorprendió. Devuelve con una nota amable si solo contestó con monosílabos.', 'Comment noter : 10 s’il a répondu en réfléchissant, 25 s’il a expliqué le pourquoi, 50 s’il t’a surpris. Renvoie avec une note bienveillante s’il a répondu en un mot.'],
+  'r.tab': ['Informe', 'Bilan'], 'r.prev': ['Semana anterior', 'Semaine précédente'], 'r.next': ['Semana siguiente', 'Semaine suivante'],
+  'r.title': ['Semana de {x} · del {a} al {b}', 'Semaine de {x} · du {a} au {b}'],
+  'r.games': ['Juegos', 'Jeux'], 'r.noGames': ['Esta semana no ha avanzado en ningún juego.', 'Cette semaine, aucun progrès dans les jeux.'],
+  'r.units': ['{n} {u} nuevas', '{n} {u} nouvelles'], 'r.days': ['{n} días', '{n} jours'], 'r.day': ['1 día', '1 jour'],
+  'r.topics': ['Temas trabajados', 'Thèmes travaillés'], 'r.refl': ['Cuaderno de vuelo', 'Carnet de bord'], 'r.reflS': ['reflexiones', 'réflexions'],
+  'r.reflN': ['{n} reflexiones escritas, {v} validadas, {p} puntos de bitácora', '{n} réflexions écrites, {v} validées, {p} points de bord'],
+  'r.rut': ['{p} % de las tareas hechas ({ok} de {n}), {c} créditos ganados', '{p} % des tâches faites ({ok} sur {n}), {c} crédits gagnés'],
+  'r.due': ['Recordatorios atrasados', 'Rappels en retard'], 'r.talk': ['Para hablar en la cena', 'Pour en parler au dîner'],
+  'r.copy': ['Copiar el informe', 'Copier le bilan'], 'r.share': ['Compartir', 'Partager'], 'r.copied': ['Informe copiado', 'Bilan copié'],
+  'r.note': ['Se calcula con lo que hay en este aparato. Las semanas anteriores aparecen a partir de ahora, conforme se use la Estación.', 'Calculé à partir de ce qui est sur cet appareil. Les semaines précédentes apparaîtront au fil de l’utilisation de la Station.'],
   'p.links': ['Enlaces del colegio', 'Liens du collège'], 'p.editLinks': ['Editar los enlaces', 'Modifier les liens'],
   /* mudanza */
   'mv.title': ['Traer tus partidas', 'Récupérer tes parties'], 'mv.lead': ['Estas partidas vienen de la dirección antigua de la Estación. ¿Las guardamos aquí?', 'Ces parties viennent de l’ancienne adresse de la Station. On les enregistre ici ?'],
@@ -157,6 +167,7 @@ function toast(x) { const e = $('#toast'); e.textContent = x; e.hidden = false; 
 let lastFocus = null;
 function modal(html, onMount, wide) {
   const m = $('#modal'); lastFocus = document.activeElement; $('#sheet').className = 'sheet' + (wide ? ' wide' : ''); $('#sheet').innerHTML = html; m.hidden = false;
+  const h = $('#sheet h3'); if (h) { h.id = 'sheetT'; $('#sheet').setAttribute('aria-labelledby', 'sheetT'); } else $('#sheet').removeAttribute('aria-labelledby');
   const close = () => { stopVoice(); m.hidden = true; $('#sheet').innerHTML = ''; removeEventListener('keydown', k); if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e) {} };
   m.onclick = e => { if (e.target === m) close(); };
   const k = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', k);
@@ -312,6 +323,7 @@ function detect() {
     added = true;
   });
   S.bita = S.bita.slice(0, 12);
+  recordDay();
   save();
   return added;
 }
@@ -476,6 +488,82 @@ function reflItem(r) {
 /* ---------- zona de padres ---------- */
 let parentPin = '';      // solo en memoria mientras la zona está abierta
 function parentZone() { parentGate(pin => { parentPin = pin; showParent('pend'); }); }
+/* ---------- informe semanal para padres ----------
+   Cada visita apunta en S.hist el progreso de cada juego de ese día; el informe compara
+   el final de la semana con lo que había antes de empezarla. Nada sale del aparato. */
+function recordDay() {
+  if (!S.hist || typeof S.hist !== 'object') S.hist = {};
+  const d = ymd(new Date()), row = {};
+  GAMES.forEach(g => { let p = null; try { p = g.read(); } catch (e) {} if (p) row[g.id] = { xp: p.xp || 0, done: p.done || 0 }; });
+  if (!Object.keys(S.hist).length) S.hist['0000-00-00'] = row;   // punto de partida: lo jugado antes no cuenta como «esta semana»
+  S.hist[d] = row;
+  const keys = Object.keys(S.hist).sort(); while (keys.length > 120) delete S.hist[keys.shift()];
+}
+function weekBounds(offset) { const n = new Date(); const mon = addDays(n, -((n.getDay() + 6) % 7) + 7 * offset); const sun = addDays(mon, 6); return { a: ymd(mon), b: ymd(sun), mon }; }
+function rutinatorWeek(a, b) {
+  const e = read(RUT3); if (!e || !e.tareas) return null; let exp = 0, ok = 0, earned = 0;
+  for (let d = new Date(a + 'T12:00'); ymd(d) <= b && ymd(d) <= ymd(new Date()); d = addDays(d, 1)) {
+    const k = ymd(d), di = dayIdx(d);
+    const blocks = Object.values(e.horario || {}).filter(x => x.dia === di);
+    const cat = Object.values(e.tareas || {}).filter(x => x.tipo !== 'habito' && x.activa !== false && (x.tipo === 'puntual' ? x.fecha === k : (!x.dias || x.dias === 'todos' || (Array.isArray(x.dias) && x.dias.includes(di)))));
+    const all = cat.concat(blocks.filter(x => x.requierePreparacion).map(x => ({ id: 'gen_' + x.id })));
+    exp += all.length; ok += all.filter(x => { const m = (e.marcas || {})[k + '__' + x.id]; return m && (m.estado === 'aprobada' || m.estado === 'pendiente'); }).length;
+  }
+  Object.values(e.ledger || {}).forEach(m => { if (m.cuenta === 'semana' && m.tipo === 'ganado' && !m.anuladoPor && m.fecha >= a && m.fecha <= b) earned += Number(m.cantidad || 0); });
+  return { pct: exp ? Math.round(ok / exp * 100) : 0, ok, exp, earned: Math.round(earned) };
+}
+function buildReport(offset) {
+  const { a, b, mon } = weekBounds(offset); const H = S.hist || {}; const days = Object.keys(H).sort();
+  const before = days.filter(d => d < a).pop(), inWeek = days.filter(d => d >= a && d <= b);
+  const games = GAMES.map(g => {
+    const start = (before && H[before][g.id]) || (inWeek.length && H[inWeek[0]][g.id]) || { xp: 0, done: 0 };
+    const endD = inWeek.slice().reverse().find(d => H[d][g.id]); const end = endD ? H[endD][g.id] : start;
+    let prev = start, played = 0; inWeek.forEach(d => { const x = H[d][g.id]; if (x && x.xp > prev.xp) played++; if (x) prev = x; });
+    return { g, xp: Math.max(0, end.xp - start.xp), done: Math.max(0, end.done - start.done), days: played };
+  }).filter(x => x.xp || x.done);
+  const ts = x => ymd(new Date(x));
+  const topics = [...new Set(S.bita.filter(x => ts(x.at) >= a && ts(x.at) <= b).map(x => { const tp = topicOf(x); return `${gameName(x.game)} · ${tp ? tt(tp.nombre) : x.topic}`; }))];
+  const refl = S.refl.filter(r => ts(r.created) >= a && ts(r.created) <= b);
+  const val = refl.filter(r => r.estado === 'validada'), pts = val.reduce((x, r) => x + r.puntos, 0);
+  const talk = (val.slice().sort((x, y) => y.puntos - x.puntos)[0] || refl[0] || null);
+  const due = S.notes.filter(n => !n.done && n.due && n.due < ymd(new Date()));
+  return { a, b, mon, games, topics, refl, val, pts, talk, due, rut: rutinatorWeek(a, b), name: childName() };
+}
+function reportText(R) {
+  const L1 = [], fd = d => new Date(d + 'T12:00').toLocaleDateString(LOC(), { day: 'numeric', month: 'long' });
+  L1.push(t('r.title', { x: R.name, a: fd(R.a), b: fd(R.b) }));
+  L1.push('', t('r.games'));
+  if (R.games.length) R.games.forEach(x => L1.push(`• ${x.g.name}: +${x.xp} XP${x.done ? `, ${t('r.units', { n: x.done, u: pick2(x.g.unit || ['misiones', 'missions']) })}` : ''}${x.days ? ` (${x.days === 1 ? t('r.day') : t('r.days', { n: x.days })})` : ''}`));
+  else L1.push('• ' + t('r.noGames'));
+  if (R.topics.length) { L1.push('', t('r.topics')); R.topics.forEach(x => L1.push('• ' + x)); }
+  L1.push('', t('r.refl'), '• ' + t('r.reflN', { n: R.refl.length, v: R.val.length, p: R.pts }));
+  if (R.rut) L1.push('', 'Rutinator', '• ' + t('r.rut', { p: R.rut.pct, ok: R.rut.ok, n: R.rut.exp, c: R.rut.earned }));
+  if (R.due.length) L1.push('', t('r.due'), ...R.due.map(n => '• ' + n.title));
+  if (R.talk) L1.push('', t('r.talk'), '«' + R.talk.pregunta + '»');
+  L1.push('', '— Curionauta');
+  return L1.join('\n');
+}
+let reportOffset = 0;
+function reportHTML() {
+  const R = buildReport(reportOffset); const fd = d => new Date(d + 'T12:00').toLocaleDateString(LOC(), { day: 'numeric', month: 'short' });
+  return `<div class="row" style="justify-content:space-between;margin:0 0 10px"><button class="btn sm" id="rPrev" aria-label="${esc(t('r.prev'))}">‹</button>
+    <b>${esc(fd(R.a))} – ${esc(fd(R.b))}</b><button class="btn sm" id="rNext" aria-label="${esc(t('r.next'))}" ${reportOffset >= 0 ? 'disabled' : ''}>›</button></div>
+    <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="stat"><b>${R.games.reduce((x, g) => x + g.xp, 0)}</b><span>XP</span></div><div class="stat"><b>${R.refl.length}</b><span>${esc(t('r.reflS'))}</span></div><div class="stat"><b>${R.pts}</b><span>${esc(t('book.points'))}</span></div></div>
+    <div class="set-sec"><h4>${esc(t('r.games'))}</h4>${R.games.length ? `<ul class="rlist">${R.games.map(x => `<li class="ritem"><b>${esc(x.g.name)}</b> <span class="muted">+${x.xp} XP${x.done ? ` · ${esc(t('r.units', { n: x.done, u: pick2(x.g.unit || ['misiones', 'missions']) }))}` : ''}${x.days ? ` · ${esc(x.days === 1 ? t('r.day') : t('r.days', { n: x.days }))}` : ''}</span></li>`).join('')}</ul>` : `<p class="empty">${esc(t('r.noGames'))}</p>`}</div>
+    ${R.topics.length ? `<div class="set-sec"><h4>${esc(t('r.topics'))}</h4><p>${R.topics.map(esc).join('<br>')}</p></div>` : ''}
+    ${R.rut ? `<div class="set-sec"><h4>Rutinator</h4><p>${esc(t('r.rut', { p: R.rut.pct, ok: R.rut.ok, n: R.rut.exp, c: R.rut.earned }))}</p></div>` : ''}
+    ${R.due.length ? `<div class="set-sec"><h4>${esc(t('r.due'))}</h4><p>${R.due.map(n => esc(n.title)).join('<br>')}</p></div>` : ''}
+    ${R.talk ? `<div class="set-sec"><h4>${esc(t('r.talk'))}</h4><p class="mdato" style="margin:0">«${esc(R.talk.pregunta)}»<br><span class="small">${esc(R.talk.respuesta.slice(0, 220))}${R.talk.respuesta.length > 220 ? '…' : ''}</span></p></div>` : ''}
+    <div class="row" style="justify-content:flex-start"><button class="btn" id="rCopy">${esc(t('r.copy'))}</button>${navigator.share ? `<button class="btn" id="rShare">${esc(t('r.share'))}</button>` : ''}</div>
+    <p class="muted small">${esc(t('r.note'))}</p>`;
+}
+function bindReport() {
+  const R = () => reportText(buildReport(reportOffset));
+  const pv = $('#rPrev'); if (pv) pv.onclick = () => { reportOffset--; showParent('inf'); };
+  const nx = $('#rNext'); if (nx) nx.onclick = () => { if (reportOffset < 0) { reportOffset++; showParent('inf'); } };
+  const cp = $('#rCopy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(R()); toast(t('r.copied')); } catch (e) { prompt(t('r.copy'), R()); } };
+  const sh = $('#rShare'); if (sh) sh.onclick = () => navigator.share({ title: 'Curionauta', text: R() }).catch(() => {});
+}
 function showParent(tab) {
   const pend = S.refl.filter(r => r.estado === 'pendiente'), done = S.refl.filter(r => r.estado !== 'pendiente').slice(0, 40);
   const nm = r => (ME && ME.role === 'padre' && r.member && FAM[r.member]) || childName();
@@ -485,16 +573,19 @@ function showParent(tab) {
         <textarea maxlength="300" placeholder="${esc(t('p.note', { x: nm(r) }))}" aria-label="${esc(t('p.note', { x: nm(r) }))}"></textarea>
         <div class="acts"><button class="btn sm ok" data-p="10">${esc(t('p.v10'))}</button><button class="btn sm ok" data-p="25">${esc(t('p.v25'))}</button><button class="btn sm ok" data-p="50">${esc(t('p.v50'))}</button><button class="btn sm" data-p="back">${esc(t('p.back'))}</button></div>
         <p class="msg"></p></li>`).join('')}</ul>` : `<p class="empty">${esc(t('p.none'))}</p>`)
+    : tab === 'inf' ? reportHTML()
     : tab === 'hist' ? (done.length ? `<ul class="rlist">${done.map(reflItem).join('')}</ul>` : `<p class="empty">${esc(t('p.noneH'))}</p>`)
     : `<p>${esc(S.mentorOff ? t('p.mentorOff') : t('p.mentorOn'))}</p><div class="row" style="justify-content:flex-start"><button class="btn" id="pTog">${esc(t('p.toggle'))}</button></div>
        <div class="set-sec"><h4>${esc(t('p.links'))}</h4><button class="btn" id="pLinks">${esc(t('p.editLinks'))}</button></div>`;
   modal(`<h3>${esc(t('p.title'))}</h3><div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === 'pend'}" data-tab="pend">${esc(t('p.pending'))}${pend.length ? ` (${pend.length})` : ''}</button>
+      <button role="tab" aria-selected="${tab === 'inf'}" data-tab="inf">${esc(t('r.tab'))}</button>
       <button role="tab" aria-selected="${tab === 'hist'}" data-tab="hist">${esc(t('p.history'))}</button>
       <button role="tab" aria-selected="${tab === 'set'}" data-tab="set">${esc(t('p.settings'))}</button></div>
     ${body}<div class="row"><button class="btn pri" id="pClose">${esc(t('btn.close'))}</button></div>`, close => {
     $('#pClose').onclick = () => { parentPin = ''; close(); };
     $$('#sheet [data-tab]').forEach(b => b.onclick = () => showParent(b.dataset.tab));
+    if (tab === 'inf') bindReport();
     const tg = $('#pTog'); if (tg) tg.onclick = () => { S.mentorOff = !S.mentorOff; save(); renderMentor(); showParent('set'); };
     const pl = $('#pLinks'); if (pl) pl.onclick = () => { close(); editLinks = true; renderLinks(); location.hash = '#cole'; };
     $$('#sheet .rev [data-p]').forEach(b => b.onclick = async () => {

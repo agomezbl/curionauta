@@ -51,7 +51,7 @@ async function nuevaPagina(b, vp, opts = {}) {
   if (opts.cloud) await ctx.route('**/estacion/config.js', r => r.fulfill({ contentType: 'text/javascript', body: CFG }));
   else await ctx.route('**/estacion/config.js', r => r.fulfill({ contentType: 'text/javascript', body: 'window.ESTACION={}' }));
   const p = await ctx.newPage(); const tag = opts.tag || vp.n;
-  p.on('pageerror', e => errs.push(`${tag}: ${e.message}`)); p.on('console', m => { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errs.push(`${tag} consola: ${m.text()}`); });
+  p.on('pageerror', e => errs.push(`${tag}: ${e.message}`)); p.on('console', m => { if (m.type() === 'error' && !/favicon|404|ERR_TUNNEL|ERR_NAME|ERR_INTERNET/.test(m.text())) errs.push(`${tag} consola: ${m.text()}`); });
   return { ctx, p };
 }
 const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -101,6 +101,10 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await p.screenshot({ path: path.join(SH, `est-${vp.n}-4-padres.png`) });
     await p.fill('.rev textarea', 'Muy bien explicado'); await p.click('.rev [data-p="25"]'); await p.waitForTimeout(250);
     check(await p.evaluate(() => __EST.S.refl[0].estado === 'validada' && __EST.S.refl[0].puntos === 25), `estación ${vp.n}: el padre valida con 25`);
+    await p.click('[data-tab="inf"]'); await p.waitForTimeout(250);
+    const inf = (await p.textContent('#sheet')).replace(/\s+/g, ' ');
+    check(/Chrono-Ohm \+170 XP/.test(inf) && /2 misiones nuevas/.test(inf) && /Para hablar en la cena/.test(inf), `estación ${vp.n}: informe semanal («${inf.slice(0, 120)}…»)`);
+    if (vp.n === 'movil') await p.screenshot({ path: path.join(SH, 'est-informe.png'), fullPage: true });
     await p.click('#pClose'); await p.waitForTimeout(200);
     check((await p.textContent('#bptsN')) === '25', `estación ${vp.n}: puntos de bitácora en la cabecera`);
     check(/\+25 puntos/.test(await p.textContent('#mentorBox')), `estación ${vp.n}: el mentor le cuenta la validación`);
@@ -128,6 +132,15 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await p.click('.mq [data-voz="q"]'); await p.waitForTimeout(600);
     check(pedidos.includes('/estacion/audio/es/faro/m.pregunta.mp3'), `voz: pide el audio grabado del mentor (${pedidos.join(', ') || 'nada'})`);
     await p.click('.mdato [data-voz="dato"]'); await p.waitForTimeout(200);
+    await ctx.close();
+  }
+  /* ---------- 2d. pestaña «Volver a la Estación» en cada juego ---------- */
+  for (const u of ['/juegos/chrono-ohm/', '/juegos/pitagoras/', '/juegos/philoquest/', '/juegos/umbral/', '/rutinator/']) {
+    const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'volver' + u });
+    await p.goto(BASE + u); await p.waitForTimeout(1500);
+    const ok = await p.evaluate(() => { const h = document.querySelector('[data-curionauta="volver"]'); const a = h && h.shadowRoot && h.shadowRoot.querySelector('a'); if (!a) return null; const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), visible: r.right > 20 && r.right < 60 }; });
+    check(ok && ok.href === '/estacion/' && ok.visible, `pestaña «Volver» en ${u} (${JSON.stringify(ok)})`);
+    await p.screenshot({ path: path.join(SH, 'volver-' + u.split('/').filter(Boolean).pop() + '.png') });
     await ctx.close();
   }
   /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */

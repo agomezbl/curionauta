@@ -130,7 +130,7 @@ def mapa(t):
         mundos += (f'<a href="{E(url)}" class="mundo"><circle cx="{x}" cy="{y}" r="22" fill="{color}" fill-opacity=".16" stroke="{color}" stroke-width="2.5"/>'
                    f'<circle cx="{x}" cy="{y}" r="7" fill="{color}"/>'
                    f'<text x="{lx}" y="{y + 5}" text-anchor="{anc}">{E(nombre)}</text></a>')
-    return f'''<svg class="mapa" viewBox="0 0 560 480" role="img" aria-label="{E(t['mapa'])}">
+    return f'''<svg class="mapa" viewBox="0 0 560 480" role="group" aria-label="{E(t['mapa'])}">
   <g class="estrellas" fill="#eef3fb" fill-opacity=".55">{estrellas}</g>
   <g fill="none" stroke="#2c4566" stroke-width="1"><circle cx="280" cy="240" r="90"/><circle cx="280" cy="240" r="160"/><circle cx="280" cy="240" r="230"/>
     <path d="M280 0v480M0 240h560" stroke-dasharray="2 6"/></g>

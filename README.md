@@ -48,6 +48,13 @@ fuente. Tras publicar un juego, basta con volver a desplegar esta web.
 
 Para cambiar o añadir frases y preguntas: `site/estacion/mentores.js`. Cada tema es `<juego>:<capítulo>`.
 
+## Extras
+
+- **Pestaña «Volver a la Estación»** en cada juego y en Rutinator: `site/comun/volver.js`, que `montar.sh`
+  añade al montar la web. Los repositorios de los juegos no se tocan.
+- **Informe semanal** en la zona de padres: progreso de cada juego, temas, reflexiones, Rutinator y una
+  pregunta «para hablar en la cena». Se calcula en el aparato y se puede copiar o compartir.
+
 ## Voces de los mentores
 
 - `node tools/voces-inventario.js` → `voces/inventario-es.csv` y `-fr.csv`: cada frase con su archivo y sus caracteres
@@ -62,6 +69,7 @@ Guía para publicar la primera vez: `docs/PUBLICAR.md`.
 
 ```
 bash tools/montar.sh && node tools/test.js && node tools/test-mudanza.js ../estacion-nil
+AXE=/ruta/axe-core/axe.min.js node tools/test-accesibilidad.js     # WCAG 2.1 AA con axe-core
 PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh
 ```
 
