@@ -698,13 +698,15 @@ async function readMove(hashStr) {
   else if (kind !== 'j.') throw new Error('formato');
   return JSON.parse(new TextDecoder().decode(bytes));
 }
-const progressOf = (k, v) => { try { const o = JSON.parse(v); return (o && (o.xp || 0)) * 1e13 + (o && (o.savedAt || o.updated || o.t || 0)); } catch (e) { return 0; } };
+const progressOf = (k, v) => { try { const o = JSON.parse(v); if (!o || typeof o !== 'object') return 0;
+  const peso = o.xp || (o.ledger ? Object.keys(o.ledger).length : 0) || (o.slots ? Object.keys(o.slots).length : 0);
+  return peso * 1e13 + (o.savedAt || o.updated || o.t || 0); } catch (e) { return 0; } };
 async function checkMove() {
   if (!/^#mudanza=/.test(location.hash)) return;
   let data = null; try { data = await readMove(location.hash); } catch (e) { data = null; }
   history.replaceState(null, '', location.pathname + location.search);
   if (!data || typeof data !== 'object' || !data.keys) { modal(`<h3>${esc(t('mv.title'))}</h3><p>${esc(t('mv.bad'))}</p><div class="row"><button class="btn pri" id="mvX">${esc(t('btn.ok'))}</button></div>`, c => { $('#mvX').onclick = c; }); return; }
-  const names = { 'chrono-ohm-v1': 'Chrono-Ohm', 'expedicion-pitagoras-v1': 'La Expedición Pitágoras', 'philoquest.v3.store': 'PhiloQuest', 'umbral.save.v3': 'UMBRAL', [KEY]: t('mv.station') };
+  const names = { 'chrono-ohm-v1': 'Chrono-Ohm', 'expedicion-pitagoras-v1': 'La Expedición Pitágoras', 'philoquest.v3.store': 'PhiloQuest', 'umbral.save.v3': 'UMBRAL', 'rutineitor.v3.estado': 'Rutinator', [KEY]: t('mv.station') };
   const rows = Object.keys(data.keys).filter(k => typeof data.keys[k] === 'string' && !/auth|sb-|fake-sess/i.test(k)).map(k => {
     const mine = localStorage.getItem(k); const keepMine = mine && k !== KEY && progressOf(k, mine) >= progressOf(k, data.keys[k]);
     return { k, name: names[k] || k, keepMine };
