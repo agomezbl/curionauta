@@ -311,3 +311,10 @@ if __name__ == '__main__':
     escribe('fr/index.html', portada('fr'))
     escribe('legal/privacidad.html', privacidad('es'))
     escribe('fr/confidentialite.html', privacidad('fr'))
+    t = TXT['es']
+    escribe('404.html', cabecera(t, '/404.html', '/', '/fr/', 'Página no encontrada · Curionauta', 'Esta página no existe.') +
+        '<main id="contenido" class="ancho"><article class="legal"><h1>Esta página no existe</h1>'
+        '<p>Puede que el enlace esté mal escrito o que la página se haya movido.</p>'
+        '<p lang="fr">Cette page n’existe pas. Le lien est peut-être mal écrit ou la page a été déplacée.</p>'
+        '<div class="acciones"><a class="boton lleno" href="/estacion/">Entrar en la Estación</a><a class="boton" href="/">Ir al inicio</a></div>'
+        '</article></main>\n' + pie(t))

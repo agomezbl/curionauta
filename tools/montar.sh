@@ -24,15 +24,11 @@ for par in $JUEGOS; do
     | while IFS= read -r f; do mkdir -p "$dest/$(dirname "$f")"; cp "$src/$f" "$dest/$f"; done
   # la pestaña «Volver a la Estación» en la página principal de cada juego (y de Rutinator)
   if [ -f "$dest/index.html" ]; then
-    python3 - "$dest/index.html" <<'PY'
-import sys
-p = sys.argv[1]; s = open(p, encoding='utf-8').read()
-tag = '<script src="/comun/volver.js" defer></script>'
-if tag not in s:
-    i = s.lower().rfind('</body>')
-    s = s[:i] + tag + '\n' + s[i:] if i >= 0 else s + tag
-    open(p, 'w', encoding='utf-8').write(s)
-PY
+    node -e '
+      const fs = require("fs"), p = process.argv[1], tag = "<script src=\"/comun/volver.js\" defer></script>";
+      let s = fs.readFileSync(p, "utf8");
+      if (!s.includes(tag)) { const i = s.toLowerCase().lastIndexOf("</body>"); s = i >= 0 ? s.slice(0, i) + tag + "\n" + s.slice(i) : s + tag; fs.writeFileSync(p, s); }
+    ' "$dest/index.html"
   fi
   echo "  $id: $(find "$dest" -type f | wc -l) archivos"
 done

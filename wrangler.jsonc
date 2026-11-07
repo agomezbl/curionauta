@@ -1,0 +1,16 @@
+// Cloudflare Workers (recursos estáticos). Al publicar, «wrangler deploy» ejecuta antes
+// tools/montar.sh, que monta la web completa (con los juegos) en dist/.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "curionauta",
+  "compatibility_date": "2026-11-04",
+  "build": { "command": "bash tools/montar.sh" },
+  "assets": {
+    "directory": "dist",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false }
+}
