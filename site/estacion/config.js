@@ -5,5 +5,5 @@
 window.ESTACION = {
   supabaseUrl: 'https://rkunylxrbnndijyvisfj.supabase.co',
   supabaseKey: 'sb_publishable_KhfVpiIf3dmRJ7C9ZJcwEw_ypS98OM7',
-  rutinatorUrl: 'https://agomezbl.github.io/RutinatorV3/'
+  rutinatorUrl: '../rutinator/'
 };

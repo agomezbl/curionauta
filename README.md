@@ -7,6 +7,7 @@ La web de **curionauta.com**: la página pública para familias (español y fran
 curionauta.com/                   web pública (ES)        · /fr/  la misma en francés
 curionauta.com/estacion/          la Estación (app instalable, funciona sin conexión)
 curionauta.com/juegos/chrono-ohm/ · /juegos/pitagoras/ · /juegos/philoquest/ · /juegos/umbral/
+curionauta.com/rutinator/        Rutinator v3 (la Estación lee sus tareas, créditos, hucha y horario del aparato)
 curionauta.com/legal/privacidad.html · /fr/confidentialite.html
 ```
 
@@ -21,7 +22,7 @@ Cloudflare Pages, conectado a este repositorio:
 - Carpeta de salida: `dist`
 
 `tools/montar.sh` copia `site/` y descarga los juegos desde sus propios repositorios de GitHub
-(`chrono-ohm`, `expedicion-pitagoras`, `PHYLOQUEST`, `UMBRAL-D-D-QUEST`), así cada juego tiene una sola
+(`chrono-ohm`, `expedicion-pitagoras`, `PHYLOQUEST`, `UMBRAL-D-D-QUEST` y `RutinatorV3`), así cada juego tiene una sola
 fuente. Tras publicar un juego, basta con volver a desplegar esta web.
 
 ## Partes
@@ -46,6 +47,16 @@ fuente. Tras publicar un juego, basta con volver a desplegar esta web.
    y exige la clave de padre (o la sesión del padre).
 
 Para cambiar o añadir frases y preguntas: `site/estacion/mentores.js`. Cada tema es `<juego>:<capítulo>`.
+
+## Voces de los mentores
+
+- `node tools/voces-inventario.js` → `voces/inventario-es.csv` y `-fr.csv`: cada frase con su archivo y sus caracteres
+  (hoy, 784 audios y 72.561 caracteres en total).
+- Las voces elegidas van en `voces/voces.json`; `ELEVENLABS_API_KEY=… node tools/voces-grabar.js` graba lo que falte
+  en `site/estacion/audio/` y actualiza `audio/manifest.json`.
+- Mientras no haya audio, el botón 🔊 usa la voz del aparato con un tono distinto para cada mentor.
+
+Guía para publicar la primera vez: `docs/PUBLICAR.md`.
 
 ## Pruebas
 

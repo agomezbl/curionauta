@@ -9,7 +9,7 @@
 'use strict';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const CFG = Object.assign({ supabaseUrl: '', supabaseKey: '', rutinatorUrl: '', oldUrl: 'https://agomezbl.github.io/estacion-nil/' }, window.ESTACION || {});
+const CFG = Object.assign({ supabaseUrl: '', supabaseKey: '', rutinatorUrl: '../rutinator/', oldUrl: 'https://agomezbl.github.io/estacion-nil/' }, window.ESTACION || {});
 const MEN = window.CURIO_MENTORES;
 const KEY = 'estacion-nil-v1';          // se mantiene: así la mudanza desde la Estación antigua es directa
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -64,6 +64,8 @@ const I = {
   'pin.net': ['No he podido comprobarla. ¿Hay conexión?', 'Impossible de vérifier. Y a-t-il une connexion ?'],
   'rut.login': ['Entra con tu cuenta para ver tus tareas y créditos.', 'Connecte-toi pour voir tes tâches et tes crédits.'],
   'rut.noconn': ['Rutinator aparecerá aquí cuando la Estación esté conectada con su cuenta.', 'Rutinator apparaîtra ici quand la Station sera connectée à son compte.'],
+  'rut.none': ['Cuando uses Rutinator en este aparato, aquí verás tus tareas de hoy, tus créditos y tu hucha.', 'Quand tu utiliseras Rutinator sur cet appareil, tu verras ici tes tâches du jour, tes crédits et ta tirelire.'],
+  'rut.hucha': ['{n} en la hucha', '{n} dans la tirelire'],
   'rut.open': ['Abrir Rutinator', 'Ouvrir Rutinator'], 'rut.tasks': ['{a} de {b} tareas hoy', '{a} tâches sur {b} aujourd’hui'],
   'rut.credits': ['créditos', 'crédits'], 'rut.stars': ['estrellas', 'étoiles'],
   'hoy.until': ['hasta las {h}', 'jusqu’à {h}'], 'hoy.then': ['luego {x}', 'ensuite {x}'], 'hoy.end': ['y se acabó por hoy', 'et c’est fini pour aujourd’hui'],
@@ -91,6 +93,7 @@ const I = {
   'syncing': ['Sincronizando…', 'Synchronisation…'],
   /* mentor y cuaderno */
   'm.choose': ['Elige tu mentor', 'Choisis ton mentor'], 'm.chooseLead': ['Te acompañará en la Estación. Todos ayudan igual de bien: cambia solo la manera de hablar. Puedes cambiarlo cuando quieras.', 'Il t’accompagnera dans la Station. Ils aident tous aussi bien : seule leur façon de parler change. Tu peux en changer quand tu veux.'],
+  'm.listen': ['Escuchar', 'Écouter'],
   'm.pick': ['Elegir a {x}', 'Choisir {x}'], 'm.answer': ['Responder', 'Répondre'], 'm.later': ['Ahora no', 'Pas maintenant'],
   'm.send': ['Enviar al cuaderno', 'Envoyer au carnet'], 'm.write': ['Escribe lo que piensas… (no hay respuesta mala)', 'Écris ce que tu penses… (il n’y a pas de mauvaise réponse)'],
   'm.dato': ['Dato', 'Le saviez-vous'], 'm.queue': ['{n} más en el cuaderno', '{n} de plus dans le carnet'],
@@ -154,7 +157,7 @@ function toast(x) { const e = $('#toast'); e.textContent = x; e.hidden = false; 
 let lastFocus = null;
 function modal(html, onMount, wide) {
   const m = $('#modal'); lastFocus = document.activeElement; $('#sheet').className = 'sheet' + (wide ? ' wide' : ''); $('#sheet').innerHTML = html; m.hidden = false;
-  const close = () => { m.hidden = true; $('#sheet').innerHTML = ''; removeEventListener('keydown', k); if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e) {} };
+  const close = () => { stopVoice(); m.hidden = true; $('#sheet').innerHTML = ''; removeEventListener('keydown', k); if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (e) {} };
   m.onclick = e => { if (e.target === m) close(); };
   const k = e => { if (e.key === 'Escape') close(); }; addEventListener('keydown', k);
   if (onMount) onMount(close);
@@ -346,6 +349,29 @@ function sendRefl(entry, text) {
   save();
 }
 
+/* ---------- la voz del mentor ----------
+   Si existe el audio grabado (audio/<idioma>/<mentor>/<id>.mp3, listado en audio/manifest.json) se usa;
+   si no, la voz del propio aparato, con un tono y un ritmo distintos para cada mentor. Nunca suena sola. */
+const VOZ = { bitacora: { rate: 0.95, pitch: 1.0, n: 0 }, brujula: { rate: 1.08, pitch: 1.12, n: 1 }, astrolabio: { rate: 0.9, pitch: 0.82, n: 2 }, faro: { rate: 0.88, pitch: 0.95, n: 3 } };
+let AUDIO_OK = null, playing = null;
+fetch('audio/manifest.json').then(r => (r.ok ? r.json() : {})).then(j => { AUDIO_OK = new Set(j.files || []); }).catch(() => { AUDIO_OK = new Set(); });
+const audioId = (id, m) => `${L}/${m}/${id.replace(/:/g, '_')}`;
+function stopVoice() { if (playing && playing.pause) playing.pause(); playing = null; try { speechSynthesis.cancel(); } catch (e) {} }
+function speak(parts, who) {
+  const mid = who || mentorId(); stopVoice(); parts = parts.filter(x => x && x.text);
+  const run = i => {
+    if (i >= parts.length) { playing = null; return; }
+    const pth = audioId(parts[i].id, mid);
+    if (AUDIO_OK && AUDIO_OK.has(pth)) { const a = new Audio('audio/' + pth + '.mp3'); playing = a; a.onended = () => run(i + 1); a.play().catch(() => run(i + 1)); return; }
+    if (!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(parts[i].text); const v = VOZ[mid]; u.lang = L === 'fr' ? 'fr-FR' : 'es-ES'; u.rate = v.rate; u.pitch = v.pitch;
+    const vs = speechSynthesis.getVoices().filter(x => x.lang && x.lang.toLowerCase().startsWith(L)); if (vs.length) u.voice = vs[v.n % vs.length];
+    u.onend = () => run(i + 1); playing = { pause: () => speechSynthesis.cancel() }; speechSynthesis.speak(u);
+  };
+  run(0);
+}
+const btnVoz = (key) => `<button class="btn sm voz" data-voz="${esc(key)}" aria-label="${esc(t('m.listen'))}">🔊</button>`;
+
 /* ---------- la tarjeta del mentor ---------- */
 let answering = null, nudged = {};
 function renderMentor() {
@@ -385,13 +411,17 @@ function renderMentor() {
   const q = tp ? tt(tp.preguntas[e.q % tp.preguntas.length]) : '';
   const isAns = answering === e.id;
   box.innerHTML = `${head}${first ? `<p class="msay">${esc(first)}</p>` : ''}</div></div>
-    ${tp && !e.retry ? `<p class="mdato"><b>${esc(t('m.dato'))} · </b>${esc(say('dato', { dato: tt(tp.dato) }, e.seed))}</p>` : ''}
-    ${q ? `<div class="mq"><p class="lead">${esc(say('pregunta', vars, e.seed))}</p><p class="qq">${esc(q)}</p>
+    ${tp && !e.retry ? `<p class="mdato">${btnVoz('dato')}<b>${esc(t('m.dato'))} · </b>${esc(say('dato', { dato: tt(tp.dato) }, e.seed))}</p>` : ''}
+    ${q ? `<div class="mq"><p class="lead">${btnVoz('q')}${esc(say('pregunta', vars, e.seed))}</p><p class="qq">${esc(q)}</p>
       ${isAns ? `<textarea id="mAns" maxlength="1500" placeholder="${esc(t('m.write'))}" aria-label="${esc(q)}">${esc(S.draft && S.draft[e.id] || '')}</textarea><p class="hint" id="mHint" aria-live="polite"></p>
         <div class="row"><span class="mcount" id="mCount"></span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="mCancel">${esc(t('btn.cancel'))}</button><button class="btn pri" id="mSend">${esc(t('m.send'))}</button></span></div>`
       : `<div class="mfoot"><button class="btn pri" id="mAnswer">${esc(t('m.answer'))}</button><button class="btn" id="mLater">${esc(t('m.later'))}</button>${open.length > 1 ? `<span class="mqueue">${esc(t('m.queue', { n: open.length - 1 }))}</span>` : ''}</div>`}</div>` : ''}
     ${feed ? `<div class="mfeed">${feed}</div>` : ''}`;
   bindRetry();
+  const tkey = e.game + ':' + (MEN.TOPICS[e.game + ':' + e.topic] ? e.topic : 'general'), qn = tp ? e.q % tp.preguntas.length : 0;
+  $$('#mentorBox [data-voz]').forEach(b => b.onclick = () => speak(b.dataset.voz === 'dato'
+    ? [{ id: 'd:' + tkey, text: tp ? tt(tp.dato) : '' }]
+    : [{ id: 'm.pregunta', text: say('pregunta', {}, 0) }, { id: 'q:' + tkey + ':' + qn, text: q }]));
   if (isAns) {
     const ta = $('#mAns'), cnt = () => { $('#mCount').textContent = t('m.chars', { n: ta.value.trim().length }); S.draft = S.draft || {}; S.draft[e.id] = ta.value; save(); };
     ta.oninput = cnt; cnt(); setTimeout(() => ta.focus(), 30);
@@ -420,10 +450,11 @@ function chooseMentor() {
   const cur = S.mentor;
   modal(`<h3>${esc(t('m.choose'))}</h3><p class="muted small">${esc(t('m.chooseLead'))}</p><div class="mlist">${MEN.ORDEN.map(id => {
     const m = MEN.M[id];
-    return `<button class="mopt" data-m="${esc(id)}" aria-pressed="${cur === id}" style="--mc:${esc(m.color)}">${portrait(id)}<span><b>${esc(tt(m.nombre))}</b> · <span class="muted small">${esc(tt(m.estilo))}</span><p>${esc(tt(m.presenta))}</p></span></button>`;
+    return `<div style="position:relative"><button class="mopt" data-m="${esc(id)}" aria-pressed="${cur === id}" style="--mc:${esc(m.color)};width:100%">${portrait(id)}<span><b>${esc(tt(m.nombre))}</b> · <span class="muted small">${esc(tt(m.estilo))}</span><p>${esc(tt(m.presenta))}</p></span></button><button class="btn sm voz" data-oir="${esc(id)}" style="position:absolute;right:8px;bottom:8px" aria-label="${esc(t('m.listen'))}: ${esc(tt(m.nombre))}">🔊</button></div>`;
   }).join('')}</div><div class="row"><button class="btn" id="mcClose">${esc(t('btn.close'))}</button></div>`, close => {
     $('#mcClose').onclick = close;
-    $$('#sheet [data-m]').forEach(b => b.onclick = () => { S.mentor = b.dataset.m; save(); close(); renderMentor(); toast(tt(MEN.M[S.mentor].nombre)); });
+    $$('#sheet [data-m]').forEach(b => b.onclick = () => { stopVoice(); S.mentor = b.dataset.m; save(); close(); renderMentor(); toast(tt(MEN.M[S.mentor].nombre)); });
+    $$('#sheet [data-oir]').forEach(b => b.onclick = ev => { ev.stopPropagation(); speak([{ id: 'm.presenta', text: tt(MEN.M[b.dataset.oir].presenta) }], b.dataset.oir); });
   }, true);
 }
 function openBook() {
@@ -593,6 +624,7 @@ async function pullItems() {
 /* =================== RUTINATOR =================== */
 const dayIdx = d => (d.getDay() + 6) % 7;
 async function pullRutinator() {
+  if (loadRut()) return S.cache.rut;
   const now = new Date(), today = ymd(now), di = dayIdx(now), out = {};
   const q = await Promise.all([
     sb.from('tasks').select('id,title,category,day_of_week,active,adhoc_date').eq('active', true),
@@ -608,25 +640,51 @@ async function pullRutinator() {
   if (sch) { const par = (st && st.week_parity) || 'todas'; out.blocks = sch.filter(b => !b.parity || b.parity === 'todas' || par === 'todas' || b.parity === par).map(b => ({ s: b.start_min, e: b.end_min, t: b.subject || b.label || b.type, room: b.room || '', kind: b.type })); }
   out.at = Date.now(); S.cache.rut = out; save(); return out;
 }
+/* Rutinator v3 vive en la misma dirección (curionauta.com/rutinator/): se lee de este aparato.
+   Misma lógica que su núcleo (tasks.js, schedule.js, ledger.js) para que los números coincidan. */
+const RUT3 = 'rutineitor.v3.estado';
+const minOf = h => { const m = /^(\d{1,2}):(\d{2})$/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };
+function readRutinatorV3() {
+  const e = read(RUT3); if (!e || !e.tareas) return null;
+  const now = new Date(), today = ymd(now), di = dayIdx(now), out = { v3: true };
+  const blocks = Object.values(e.horario || {}).filter(b => b.dia === di).sort((a, b) => (minOf(a.inicio) || 0) - (minOf(b.inicio) || 0));
+  const cat = Object.values(e.tareas || {}).filter(x => x.tipo !== 'habito' && x.activa !== false && (x.tipo === 'puntual' ? x.fecha === today : (!x.dias || x.dias === 'todos' || (Array.isArray(x.dias) && x.dias.includes(di)))));
+  const gen = blocks.filter(b => b.requierePreparacion).map(b => ({ id: 'gen_' + b.id, tipo: 'estandar' }));
+  const libre = Object.values(e.compras || {}).some(c => c.fecha === today && c.itemId === 'p_sintareas' && c.estado === 'aprobada');
+  let todas = cat.concat(gen); if (libre) todas = todas.filter(x => x.tipo === 'obligatoria');
+  const hecha = id => { const m = (e.marcas || {})[today + '__' + id]; return m && (m.estado === 'aprobada' || m.estado === 'pendiente'); };
+  out.tasks = { total: todas.length, done: todas.filter(x => hecha(x.id)).length };
+  const L3 = Object.values(e.ledger || {}); const sum = f => Math.round(L3.filter(f).reduce((a, m) => a + Number(m.cantidad || 0), 0) * 10) / 10;
+  const semanal = e.ajustes && e.ajustes.modoSaldo && e.ajustes.modoSaldo.valor === 'semanal';
+  const lunes = ymd(addDays(now, -di));
+  out.credits = sum(m => m.cuenta === 'semana' && (!semanal || (m.fecha >= lunes && m.fecha <= ymd(addDays(now, 6 - di)))));
+  out.stars = Math.round(sum(m => m.cuenta === 'estrellas')); out.hucha = sum(m => m.cuenta === 'hucha');
+  out.events = Object.values(e.eventos || {}).filter(x => x.fecha >= today && x.fecha <= ymd(addDays(now, 7)))
+    .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : (minOf(a.hora) || -1) - (minOf(b.hora) || -1)))
+    .slice(0, 6).map(x => ({ date: x.fecha, time: x.hora || null, type: 'cita', title: x.titulo, done: false }));
+  out.blocks = blocks.map(b => ({ s: minOf(b.inicio) || 0, e: minOf(b.fin) || 0, t: b.titulo, room: '', kind: b.tipo === 'comida' ? 'comida' : b.tipo }));
+  out.at = Date.now(); return out;
+}
+function loadRut() { const r = readRutinatorV3(); if (r) { S.cache.rut = r; save(); } return !!r; }
 const hm = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 function renderHoy() {
   const r = S.cache.rut || {}; const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); const bl = r.blocks || [];
   const cur = bl.find(b => b.s <= m && m < b.e), nx = bl.find(b => b.s > m); let html = '';
   if (cur) html = `<div class="now"><span class="ic">${cur.kind === 'comida' ? '🍽' : '🏫'}</span><div><div class="big">${esc(cur.t)}${cur.room ? ` · ${esc(cur.room)}` : ''}</div><div class="muted small">${esc(t('hoy.until', { h: hm(cur.e) }))}${nx ? ` · ${esc(t('hoy.then', { x: nx.t }))}` : ` · ${esc(t('hoy.end'))}`}</div></div></div>`;
   else if (nx) html = `<div class="now"><span class="ic">🕐</span><div><div class="big">${esc(t('hoy.next', { x: nx.t }))}</div><div class="muted small">${esc(t('hoy.at', { h: hm(nx.s) }))}${nx.room ? ` · ${esc(nx.room)}` : ''}</div></div></div>`;
-  else if (cloudOn()) html = `<div class="now"><span class="ic">🌙</span><div><div class="big">${esc(t('hoy.free'))}</div><div class="muted small">${esc(t('hoy.freeS'))}</div></div></div>`;
+  else if (cloudOn() || (S.cache.rut && S.cache.rut.v3)) html = `<div class="now"><span class="ic">🌙</span><div><div class="big">${esc(t('hoy.free'))}</div><div class="muted small">${esc(t('hoy.freeS'))}</div></div></div>`;
   else html = `<p class="empty">${esc(t('hoy.login'))}</p>`;
   $('#nowBox').innerHTML = html;
   const ev = r.events || [];
-  $('#agenda').innerHTML = ev.length ? ev.map(e => `<li class="${e.done ? 'done' : ''}"><span class="d">${esc(dueLabel(e.date))}${e.time ? `<br>${esc(e.time)}` : ''}</span><span class="t">${e.type === 'cita' ? '📌' : '🔔'} ${esc(e.title)}</span></li>`).join('') : (cloudOn() ? `<li class="empty" style="background:none;border:0;padding:4px 0">${esc(t('hoy.empty'))}</li>` : '');
+  $('#agenda').innerHTML = ev.length ? ev.map(e => `<li class="${e.done ? 'done' : ''}"><span class="d">${esc(dueLabel(e.date))}${e.time ? `<br>${esc(e.time)}` : ''}</span><span class="t">${e.type === 'cita' ? '📌' : '🔔'} ${esc(e.title)}</span></li>`).join('') : (cloudOn() || (S.cache.rut && S.cache.rut.v3) ? `<li class="empty" style="background:none;border:0;padding:4px 0">${esc(t('hoy.empty'))}</li>` : '');
 }
 function ring(done, total) { const p = total ? done / total : 0, C = 2 * Math.PI * 26; return `<svg class="ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#26324f" stroke-width="8"/><circle cx="32" cy="32" r="26" fill="none" stroke="${p >= 1 ? '#4fd18b' : '#f2a65a'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/></svg>`; }
 function renderRut() {
   const r = S.cache.rut; const open = CFG.rutinatorUrl ? `<a class="btn pri" style="width:100%;margin-top:12px" href="${esc(CFG.rutinatorUrl)}">${esc(t('rut.open'))}</a>` : '';
-  if (!cloudOn()) { $('#rutBox').innerHTML = `<p class="empty">${esc(CLOUD ? t('rut.login') : t('rut.noconn'))}</p>${open}`; return; }
+  if (!cloudOn() && !(r && r.v3)) { $('#rutBox').innerHTML = `<p class="empty">${esc(t('rut.none'))}</p>${open}`; return; }
   if (!r) { $('#rutBox').innerHTML = '<div class="sk"></div>'; return; }
   const k = r.tasks || { done: 0, total: 0 };
-  $('#rutBox').innerHTML = `<div class="stats"><div class="stat">${ring(k.done, k.total)}<span>${esc(t('rut.tasks', { a: k.done, b: k.total }))}</span></div><div class="stat"><b>${r.credits ?? '–'}</b><span>${esc(t('rut.credits'))}</span></div><div class="stat"><b>⭐ ${r.stars ?? '–'}</b><span>${esc(t('rut.stars'))}</span></div></div>${open}`;
+  $('#rutBox').innerHTML = `<div class="stats"><div class="stat">${ring(k.done, k.total)}<span>${esc(t('rut.tasks', { a: k.done, b: k.total }))}</span></div><div class="stat"><b>${r.credits ?? '–'}</b><span>${esc(t('rut.credits'))}</span></div><div class="stat"><b>⭐ ${r.stars ?? '–'}</b><span>${esc(t('rut.stars'))}</span></div></div>${r.hucha != null ? `<p class="muted small" style="margin:10px 0 0;text-align:center">🐷 ${esc(t('rut.hucha', { n: r.hucha }))}</p>` : ''}${open}`;
 }
 
 /* =================== MUDANZA desde la dirección antigua =================== */
@@ -676,7 +734,7 @@ async function checkMove() {
 
 /* =================== ARRANQUE Y SESIÓN =================== */
 const FAM = {};          // nombres de la familia (para el padre)
-function showMain() { $('#login').hidden = true; $('#main').hidden = false; $('#nav').hidden = false; tick(); detect(); renderAll(); checkMove(); }
+function showMain() { loadRut(); $('#login').hidden = true; $('#main').hidden = false; $('#nav').hidden = false; tick(); detect(); renderAll(); checkMove(); }
 function renderAll() {
   renderMentor(); renderHoy(); renderLinks(); renderRut(); renderNotes(); renderGames();
   $('#foot').textContent = cloudOn() ? `${t('foot.cloud')}${S.cache.rut && S.cache.rut.at ? ' · ' + t('foot.upd', { h: new Date(S.cache.rut.at).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' }) }) : ''}` : t('foot.local');
@@ -749,9 +807,9 @@ if (io) ['mentor', 'hoy', 'cole', 'rut', 'notas', 'juegos'].forEach(id => io.obs
 
 /* refrescos: al volver a la pestaña, al recuperar la conexión y cada 5 minutos */
 setInterval(tick, 15000); setInterval(() => { if (!document.hidden) renderHoy(); }, 60000); setInterval(() => { if (!document.hidden) refresh(); }, 300000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { if (detect()) renderMentor(); renderGames(); refresh(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { if (detect()) renderMentor(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
 addEventListener('online', () => refresh()); addEventListener('offline', () => syncDot('off', t('sync.offline')));
-addEventListener('storage', e => { if (e.key && e.key !== KEY && !$('#main').hidden) { if (detect()) renderMentor(); renderGames(); } });
+addEventListener('storage', e => { if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); renderGames(); } });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 start();
 window.__EST = { get S() { return S; }, GAMES, renderAll, detect, ymd, setLang, get ME() { return ME; } };

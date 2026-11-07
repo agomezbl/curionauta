@@ -117,6 +117,36 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await p.screenshot({ path: path.join(SH, `est-${vp.n}-7-fr.png`), fullPage: true });
     await ctx.close();
   }
+  /* ---------- 2c. voz: usa el audio grabado del mentor si existe ---------- */
+  {
+    const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'voz' }); const pedidos = [];
+    await ctx.route('**/estacion/audio/manifest.json', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ files: ['es/faro/q_chrono-ohm_c2_0', 'es/faro/m.pregunta'] }) }));
+    await ctx.route('**/estacion/audio/es/**', r => { pedidos.push(new URL(r.request().url()).pathname); r.fulfill({ status: 404 }); });
+    await ctx.addInitScript(c => { if (!localStorage.getItem('chrono-ohm-v1')) localStorage.setItem('chrono-ohm-v1', JSON.stringify(c)); }, CHRONO0);
+    await p.goto(BASE + '/estacion/'); await p.waitForTimeout(500); await p.click('#mChoose'); await p.click('[data-m="faro"]');
+    await p.evaluate(c => { localStorage.setItem('chrono-ohm-v1', JSON.stringify(c)); document.dispatchEvent(new Event('visibilitychange')); }, CHRONO1); await p.waitForTimeout(400);
+    await p.click('.mq [data-voz="q"]'); await p.waitForTimeout(600);
+    check(pedidos.includes('/estacion/audio/es/faro/m.pregunta.mp3'), `voz: pide el audio grabado del mentor (${pedidos.join(', ') || 'nada'})`);
+    await p.click('.mdato [data-voz="dato"]'); await p.waitForTimeout(200);
+    await ctx.close();
+  }
+  /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */
+  {
+    const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'rutinator' });
+    await p.goto(BASE + '/rutinator/'); await p.waitForTimeout(900);
+    const esperado = await p.evaluate(() => { const a = window.__rutineitor; a.store.fijarAjuste('configurado', true);
+      const hoy = new Date(); const k = new Date(hoy.getTime() - hoy.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+      a.store.set('ledger', 'mx1', { id: 'mx1', ts: Date.now(), fecha: k, cuenta: 'semana', tipo: 'ajuste', cantidad: 37, concepto: 'prueba', categoria: 'ajuste', provisional: false, anula: null, anuladoPor: null });
+      a.store.set('ledger', 'mx2', { id: 'mx2', ts: Date.now(), fecha: k, cuenta: 'hucha', tipo: 'ajuste', cantidad: 120, concepto: 'prueba', categoria: 'ajuste', provisional: false, anula: null, anuladoPor: null });
+      a.render(); return true; });
+    await p.waitForTimeout(1200);   // guardado diferido de Rutinator
+    await p.goto(BASE + '/estacion/'); await p.waitForTimeout(700);
+    const rut = (await p.textContent('#rutBox')).replace(/\s+/g, ' ');
+    check(/37/.test(rut) && /120 en la hucha/.test(rut) && /tareas hoy/.test(rut), `estación lee Rutinator v3 del aparato («${rut.trim().slice(0, 90)}»)`);
+    check(await p.$eval('#rutBox a', a => a.getAttribute('href')) === '../rutinator/', 'el botón abre /rutinator/');
+    await p.screenshot({ path: path.join(SH, 'est-rutinator-v3.png'), fullPage: true });
+    await ctx.close();
+  }
   /* ---------- 3. mudanza desde la Estación antigua ---------- */
   {
     const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'mudanza' });

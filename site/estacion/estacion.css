@@ -164,3 +164,5 @@ nav.bottom a.on{color:var(--ink);background:var(--card)}nav.bottom svg{width:24p
 .seg button[aria-pressed="true"]{border-color:var(--cy);color:var(--ink);background:var(--card2)}
 .set-sec{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line)}
 .set-sec h4{margin:0 0 8px;font:800 13px var(--fd);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.voz{min-height:34px;width:38px;padding:0;margin-right:8px;float:left;border-radius:10px}
+.mq .lead .voz{float:none;vertical-align:middle}

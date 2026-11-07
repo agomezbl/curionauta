@@ -12,15 +12,17 @@ cp -r site/. "$OUT/"
 STAMP=$(date -u +%Y%m%d%H%M)
 sed -i "s/__V__/$STAMP/" "$OUT/estacion/sw.js"
 
-JUEGOS="chrono-ohm:chrono-ohm pitagoras:expedicion-pitagoras philoquest:PHYLOQUEST umbral:UMBRAL-D-D-QUEST"
+# juegos en /juegos/<id>/ y Rutinator en /rutinator/
+JUEGOS="juegos/chrono-ohm:chrono-ohm juegos/pitagoras:expedicion-pitagoras juegos/philoquest:PHYLOQUEST juegos/umbral:UMBRAL-D-D-QUEST rutinator:RutinatorV3"
 for par in $JUEGOS; do
-  id=${par%%:*}; repo=${par##*:}; dest="$OUT/juegos/$id"
+  id=${par%%:*}; repo=${par##*:}; dest="$OUT/$id"
   if [ -n "${LOCAL:-}" ] && [ -d "$LOCAL/$repo" ]; then src="$LOCAL/$repo"
+  elif [ -n "${LOCAL:-}" ] && [ -d "$LOCAL/$(echo "$repo" | tr A-Z a-z)" ]; then src="$LOCAL/$(echo "$repo" | tr A-Z a-z)"
   else src=$(mktemp -d); git clone -q --depth 1 "https://github.com/agomezbl/$repo.git" "$src"; fi
   mkdir -p "$dest"
   (cd "$src" && git ls-files) | grep -Ev '^(src|tools|i18n|lab|tests|shots|tienda|licenses-src|node_modules)/|(^|/)(package(-lock)?\.json|[^/]*\.py|[^/]*\.md|\.gitignore|\.nojekyll)$' \
     | while IFS= read -r f; do mkdir -p "$dest/$(dirname "$f")"; cp "$src/$f" "$dest/$f"; done
-  echo "  juego $id: $(find "$dest" -type f | wc -l) archivos"
+  echo "  $id: $(find "$dest" -type f | wc -l) archivos"
 done
 
 N=$(find "$OUT" -type f | wc -l); GORDO=$(find "$OUT" -type f -size +25M | wc -l)
