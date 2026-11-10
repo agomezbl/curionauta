@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111416">
+<meta name="description" content="El Refugio 0.1 · Curionaut: una sala a 12 V para montar, cablear y medir con el multímetro.">
+<title>El Refugio · Curionaut</title>
+<link rel="icon" href="../estacion/icon-192.png">
+<style>
+/* Tipos de letra alojados en la propia web (sin llamadas a terceros) */
+@font-face{font-family:"Big Shoulders Stencil Display";font-weight:700;font-display:swap;src:url(../fonts/big-shoulders-stencil-display-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"Big Shoulders Stencil Display";font-weight:800;font-display:swap;src:url(../fonts/big-shoulders-stencil-display-latin-800-normal.woff2) format("woff2")}
+@font-face{font-family:"Share Tech Mono";font-weight:400;font-display:swap;src:url(../fonts/share-tech-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-weight:400;font-display:swap;src:url(../fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Atkinson Hyperlegible";font-weight:700;font-display:swap;src:url(../fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2")}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<style>
+/* Concepto: un refugio-taller de noche. La escena 3D manda; a su lado, el cuaderno del reto.
+   Ámbar = lámpara de trabajo y acciones; amarillo de seguridad = el multímetro; verde fósforo = su pantalla. */
+:root{
+  --bg:#111416; --panel:#191d1f; --panel2:#20262a; --line:#2e363a; --line2:#3b454a;
+  --ink:#ece7dc; --dim:#a7aea9; --faint:#737c78;
+  --amber:#ffb13b; --amber-ink:#2b1900; --hazard:#f2c522; --lcd:#c6f59c; --lcd-bg:#18230f;
+  --red:#ff6a57; --ok:#6fd99a; --blue:#7cc4ff;
+  --fd:"Big Shoulders Stencil Display","Arial Narrow","Impact",sans-serif;
+  --fb:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  --fm:"Share Tech Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:14px;
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--fb);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 380px;height:100%;min-height:0}
+.stage{position:relative;min-width:0;min-height:0;overflow:hidden;background:#0b0f14}
+#cv{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#cv.pick{cursor:pointer}
+.side{min-width:0;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding-block:16px 24px;padding-left:16px;padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+@media (max-width:899px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto;height:auto}
+  .stage{height:62vh;min-height:360px}
+  .side{border-left:0;border-top:1px solid var(--line);overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}
+}
+/* HUD sobre la escena */
+.hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+.brand{font:800 26px/1 var(--fd);letter-spacing:.06em;color:var(--ink);text-shadow:0 2px 12px rgba(0,0,0,.6);margin-right:auto}
+.brand small{font:400 13px var(--fm);color:var(--amber);letter-spacing:0;margin-left:6px;vertical-align:4px}
+.chip{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(17,20,22,.82);border:1px solid var(--line2);font:400 17px var(--fm);font-variant-numeric:tabular-nums;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.chip.energy{color:var(--amber)}
+.chip button{all:unset}
+.btn-time{pointer-events:auto;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--amber);background:var(--amber);color:var(--amber-ink);font:700 15px var(--fb);cursor:pointer}
+.btn-time[disabled]{opacity:.5;cursor:wait}
+.hint{position:absolute;left:50%;top:64px;transform:translateX(-50%);max-width:min(560px,calc(100% - 32px));padding:9px 14px;border-radius:12px;background:rgba(17,20,22,.86);border:1px solid var(--line2);font-size:15px;text-align:center;pointer-events:none;text-wrap:balance}
+.hint:empty{display:none}
+.toast{position:absolute;left:50%;top:116px;transform:translateX(-50%);max-width:min(520px,calc(100% - 32px));padding:12px 16px;border-radius:12px;background:var(--panel2);border:1px solid var(--line2);box-shadow:0 10px 30px rgba(0,0,0,.45);font-weight:700;text-align:center;pointer-events:none}
+.toast.bad{border-color:var(--red);color:#ffd9d3}.toast.good{border-color:var(--ok);color:#dcffe9}
+/* herramientas */
+.tools{position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:6px;padding:6px;border-radius:18px;background:rgba(17,20,22,.88);border:1px solid var(--line2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:72px;min-height:58px;padding:4px 8px;border-radius:13px;border:1px solid transparent;background:transparent;color:var(--dim);cursor:pointer;font:700 13px var(--fb)}
+.tool svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tool[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink)}
+.tool:hover{color:var(--ink)}.tool[aria-pressed="true"]:hover{color:var(--amber-ink)}
+@media (max-width:420px){.tool{min-width:60px;font-size:12px}}
+/* multímetro */
+.meter{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:calc(88px + env(safe-area-inset-bottom,0px));width:212px;padding:12px;border-radius:20px;background:var(--hazard);color:#1d1600;box-shadow:0 14px 30px rgba(0,0,0,.5),inset 0 -4px 0 rgba(0,0,0,.18)}
+.meter .lcd{height:68px;border-radius:10px;background:var(--lcd-bg);color:var(--lcd);font:400 34px/1 var(--fm);display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:0 12px;font-variant-numeric:tabular-nums;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.meter .lcd small{font-size:13px;color:#8dbb6c;align-self:flex-start}
+.meter .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.meter .modes button{min-height:44px;border-radius:10px;border:2px solid #1d1600;background:#ffe064;color:#1d1600;font:700 15px var(--fm);cursor:pointer}
+.meter .modes button[aria-pressed="true"]{background:#1d1600;color:var(--hazard)}
+.meter .name{font:800 13px var(--fd);letter-spacing:.14em;margin:0 0 8px 2px}
+@media (max-width:520px){.meter{width:172px;padding:10px;bottom:calc(82px + env(safe-area-inset-bottom,0px))}.meter .lcd{height:52px;font-size:26px}.meter .modes button{min-height:40px;font-size:14px}.meter .name{margin-bottom:6px}}
+.flash{position:absolute;inset:0;background:#dfe8ff;opacity:0;pointer-events:none;transition:opacity .08s}
+/* panel lateral */
+.mentor{display:flex;gap:12px;align-items:flex-start}
+.mentor svg{width:52px;height:52px;flex:none}
+.bubble{position:relative;flex:1;min-width:0;padding:12px 14px;border-radius:14px;background:var(--panel2);border:1px solid var(--line2);font-size:16px}
+.bubble b.who{display:block;font:800 15px var(--fd);letter-spacing:.1em;color:var(--blue);margin-bottom:2px}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--bg);padding:16px}
+.card h2{margin:0 0 10px;font:800 22px/1.05 var(--fd);letter-spacing:.05em;text-transform:uppercase;text-wrap:balance}
+.card h2 small{display:block;font:400 13px var(--fm);color:var(--amber);letter-spacing:.04em;margin-bottom:4px;text-transform:none}
+.steps{display:flex;gap:6px;margin:0 0 12px}
+.steps i{flex:1;height:6px;border-radius:3px;background:var(--line2)}
+.steps i.done{background:var(--ok)}.steps i.now{background:var(--amber)}
+.q{margin:0 0 12px;font-size:17px}
+.q b{color:var(--amber);font-weight:700}
+.answer{display:flex;gap:8px;flex-wrap:wrap}
+.answer label{display:flex;align-items:center;gap:8px;flex:1 1 160px;min-width:0;padding:0 12px;min-height:52px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2)}
+.answer input{flex:1;min-width:0;border:0;background:transparent;outline:none;font:400 22px var(--fm);font-variant-numeric:tabular-nums}
+.answer label span{font:400 18px var(--fm);color:var(--dim)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 18px;border-radius:12px;border:1px solid var(--line2);background:var(--panel2);color:var(--ink);font:700 16px var(--fb);cursor:pointer}
+.btn.pri{background:var(--amber);border-color:var(--amber);color:var(--amber-ink)}
+.btn.sm{min-height:42px;padding:0 14px;font-size:15px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.fb{margin:10px 0 0;min-height:1.4em;font-size:15px;color:var(--dim)}
+.fb.bad{color:var(--red)}.fb.good{color:var(--ok)}
+.formula{font:400 18px var(--fm);color:var(--lcd);background:var(--lcd-bg);border-radius:10px;padding:8px 12px;margin:8px 0 0;display:inline-block}
+.list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;background:var(--panel2);border:1px solid var(--line)}
+.item .ic{width:40px;height:40px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--bg);border:1px solid var(--line2)}
+.item .ic svg{width:30px;height:30px}
+.item .tx{flex:1;min-width:0}.item .tx b{display:block;font-size:15px}.item .tx small{color:var(--dim);font-size:13px}
+.item .n{font:400 16px var(--fm);color:var(--dim);min-width:28px;text-align:right}
+.item.sel{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset}
+.item button.pick{all:unset;display:flex;align-items:center;gap:10px;flex:1;min-width:0;cursor:pointer;min-height:44px}
+.item .price{min-height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--amber);background:transparent;color:var(--amber);font:400 15px var(--fm);cursor:pointer;white-space:nowrap}
+.item .price[disabled]{border-color:var(--line2);color:var(--faint);cursor:not-allowed}
+.sub{font:800 15px var(--fd);letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:14px 0 8px}
+.pass li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.pass li:first-child{border-top:0}
+.pass .seal{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line2);color:var(--faint);font:800 15px var(--fd)}
+.pass li.got .seal{border-color:var(--ok);color:var(--ok);background:rgba(111,217,154,.08)}
+.pass small{display:block;color:var(--dim);font-size:13px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--faint);font-size:13px;margin-top:auto;padding-top:8px}
+.modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(5,7,9,.72)}
+.sheet{width:min(460px,100%);max-height:calc(100% - 32px);overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
+.sheet h3{margin:0 0 8px;font:800 30px/1 var(--fd);letter-spacing:.05em;text-transform:uppercase}
+.sheet .big{font:400 40px var(--fm);color:var(--amber);margin:8px 0}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--dim);font:400 16px var(--fm)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app" id="app">
+  <section class="stage" id="stage" aria-label="El refugio en 3D">
+    <canvas id="cv" aria-label="Escena del refugio: toca los bornes, los cables y los aparatos"></canvas>
+    <div class="loading" id="loading">Encendiendo el refugio…</div>
+    <div class="hud">
+      <div class="brand">EL REFUGIO<small>0.1</small></div>
+      <button class="btn-time" id="btnTime" hidden>⏩ Pasar la noche</button>
+      <div class="chip" id="clock" title="Hora del refugio">☾ 20:30</div>
+      <div class="chip energy" id="energy" title="Tu Energía">⚡ 0</div>
+    </div>
+    <div class="hint" id="hint" aria-live="polite"></div>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <div class="meter" id="meter" hidden>
+      <p class="name">MULTÍMETRO</p>
+      <div class="lcd" id="lcd"><small id="lcdMode">V⎓</small><span id="lcdVal">– – –</span></div>
+      <div class="modes" role="group" aria-label="Qué mide">
+        <button data-m="V" aria-pressed="true" title="Tensión (voltios)">V⎓</button>
+        <button data-m="A" aria-pressed="false" title="Intensidad con la pinza (amperios)">A</button>
+        <button data-m="R" aria-pressed="false" title="Resistencia (ohmios)">Ω</button>
+        <button data-m="C" aria-pressed="false" title="Continuidad: pita si el cable está bien">)))</button>
+      </div>
+    </div>
+    <nav class="tools" aria-label="Herramientas">
+      <button class="tool" data-tool="montar" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Montar</button>
+      <button class="tool" data-tool="cable" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 19c4 0 4-14 8-14s4 14 8 14"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="19" r="2"/></svg>Cable</button>
+      <button class="tool" data-tool="medir" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><rect x="8" y="5" width="8" height="5" rx="1"/><circle cx="12" cy="16" r="2.5"/></svg>Medir</button>
+      <button class="tool" data-tool="quitar" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Quitar</button>
+    </nav>
+    <div class="flash" id="flash"></div>
+  </section>
+
+  <aside class="side" id="side">
+    <div class="mentor">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="#20262a" stroke="#7cc4ff" stroke-width="2"/><path d="M14 17h11v20H14a2 2 0 0 1-2-2V19a2 2 0 0 1 2-2zM38 17H27v20h11a2 2 0 0 0 2-2V19a2 2 0 0 0-2-2z" fill="none" stroke="#ece7dc" stroke-width="2"/><path d="M33 22l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3z" fill="#ffb13b"/><path d="M16 23h6M16 27h6M16 31h4" stroke="#a7aea9" stroke-width="1.5"/></svg>
+      <div class="bubble"><b class="who">BITÁCORA</b><span id="mentorTxt">Bienvenido al refugio. Esta noche hay que dejarlo funcionando.</span></div>
+    </div>
+    <section class="card" id="reto" aria-live="polite"></section>
+    <section class="card">
+      <h2><small id="invSub">Toca una pieza y luego su sitio en el refugio</small>Caja de piezas</h2>
+      <ul class="list" id="inv"></ul>
+      <p class="sub">Tienda</p>
+      <ul class="list" id="shop"></ul>
+    </section>
+    <section class="card">
+      <h2><small>Lo que ya sabes hacer</small>Pasaporte</h2>
+      <ul class="list pass" id="pass"></ul>
+    </section>
+    <div class="foot"><span>Prototipo de Curionauta · solo en este aparato</span><button class="btn sm" id="btnReset">Empezar de nuevo</button></div>
+  </aside>
+</div>
+<div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
+
+<script src="three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(n,d)=>n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* =====================================================================
+   1. PIEZAS Y SITIOS
+   ===================================================================== */
+const COMP={
+  bat_s:{name:'Batería pequeña',kind:'battery',group:'banco',cap:40,desc:'12 V · guarda 40 Wh'},
+  bat_l:{name:'Batería grande',kind:'battery',group:'banco',cap:120,price:30,unlock:'r2',desc:'12 V · guarda 120 Wh'},
+  panel:{name:'Placa solar',kind:'solar',group:'exterior',price:25,unlock:'r2',desc:'Hasta 20 W a pleno sol'},
+  sw:{name:'Interruptor',kind:'switch',group:'cuadro',price:5,unlock:'free',desc:'Abre y cierra el circuito'},
+  fuse:{name:'Fusible 2 A',kind:'fuse',group:'cuadro',rating:2,price:5,desc:'Se funde si pasan más de 2 A'},
+  r220:{name:'Resistencia 220 Ω',kind:'res',R:220,group:'cuadro',bands:['#d23b2b','#d23b2b','#7a4a22'],desc:'rojo · rojo · marrón'},
+  r470:{name:'Resistencia 470 Ω',kind:'res',R:470,group:'cuadro',bands:['#e6c229','#7f4bc4','#7a4a22'],desc:'amarillo · violeta · marrón'},
+  r560:{name:'Resistencia 560 Ω',kind:'res',R:560,group:'cuadro',bands:['#2f9e4f','#2f6fd6','#7a4a22'],desc:'verde · azul · marrón'},
+  r1k:{name:'Resistencia 1.000 Ω',kind:'res',R:1000,group:'cuadro',bands:['#7a4a22','#151515','#d23b2b'],desc:'marrón · negro · rojo'},
+  led:{name:'LED de emergencia',kind:'led',group:'puerta',vf:2,price:5,desc:'2 V · como mucho 20 mA'},
+  bulb:{name:'Bombilla 12 V',kind:'bulb',group:'techo',R:28.8,P:5,price:15,unlock:'r2',desc:'12 V · 5 W'},
+  fan:{name:'Ventilador 12 V',kind:'fan',group:'pared',R:24,price:30,unlock:'free',desc:'12 V · 6 W'},
+  buzzer:{name:'Zumbador 12 V',kind:'buzzer',group:'pared',R:240,price:20,unlock:'free',desc:'Pita con 6 V o más'}
+};
+const SLOTS={
+  banco:{group:'banco',label:'el banco',pos:[1.25,0.9,-1.5],rot:0},
+  c1:{group:'cuadro',label:'el cuadro',pos:[-1.5,1.62,-2.1],rot:0},
+  c2:{group:'cuadro',label:'el cuadro',pos:[-0.85,1.62,-2.1],rot:0},
+  c3:{group:'cuadro',label:'el cuadro',pos:[-0.2,1.62,-2.1],rot:0},
+  puerta:{group:'puerta',label:'encima de la puerta',pos:[-3.06,2.42,0.55],rot:Math.PI/2},
+  techo:{group:'techo',label:'el techo',pos:[0.7,2.4,0.2],rot:0},
+  exterior:{group:'exterior',label:'el exterior',pos:[3.75,0,0.9],rot:-Math.PI/2},
+  pared:{group:'pared',label:'la pared',pos:[-3.08,1.45,-1.05],rot:Math.PI/2}
+};
+/* bornes de cada tipo, en coordenadas de la pieza (mirando hacia +z), con la dirección por la que sale el cable */
+const TERMS={
+  battery:{a:{p:[-0.14,0.43,0],n:[0,1,0],l:'+'},b:{p:[0.14,0.43,0],n:[0,1,0],l:'−'}},
+  solar:{a:{p:[0.12,0.62,0.42],n:[0,0,1],l:'+'},b:{p:[-0.12,0.62,0.42],n:[0,0,1],l:'−'}},
+  cuadro:{a:{p:[0,0.33,0.07],n:[0,0.4,1],l:''},b:{p:[0,-0.33,0.07],n:[0,-0.4,1],l:''}},
+  led:{a:{p:[-0.13,-0.17,0.07],n:[0,-0.6,1],l:'+'},b:{p:[0.13,-0.17,0.07],n:[0,-0.6,1],l:'−'}},
+  bulb:{a:{p:[-0.14,0.43,0.08],n:[0,0.3,1],l:''},b:{p:[0.14,0.43,0.08],n:[0,0.3,1],l:''}},
+  pared:{a:{p:[-0.13,-0.3,0.07],n:[0,-0.5,1],l:''},b:{p:[0.13,-0.3,0.07],n:[0,-0.5,1],l:''}}
+};
+const termSet=k=>COMP[k].kind==='battery'?TERMS.battery:COMP[k].kind==='solar'?TERMS.solar:COMP[k].kind==='led'?TERMS.led:COMP[k].kind==='bulb'?TERMS.bulb:COMP[k].group==='pared'?TERMS.pared:TERMS.cuadro;
+
+/* =====================================================================
+   2. ESTADO (se guarda en este aparato)
+   ===================================================================== */
+const KEY='curionauta-refugio-0.1';
+function fresh(){return {v:1,e:0,inv:{r220:1,r470:1,r560:1,r1k:1,fuse:1},placed:{banco:{t:'bat_s',wh:40},puerta:{t:'led'},c1:{t:'sw',on:false}},cables:[],time:20.5,reto:0,step:0,done:{},stats:{ledsQuemados:0},nextId:1}}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
+if(!S||S.v!==1)S=fresh();
+let saveT=null;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}},250)}
+
+/* =====================================================================
+   3. EL CIRCUITO: análisis nodal (cada borne es un nudo, cada cable 0,01 Ω)
+   ===================================================================== */
+const G_CABLE=100,G_SW=100,G_LEAK=1e-7;
+const VF_LED=2.0,RS_LED=5;
+const batVolt=soc=>soc>0.15?12:11.2+0.8*clamp(soc,0,1)/0.15;   // 12 V casi toda la descarga, como en el enunciado
+let SOL={nodes:{},el:{}};            // resultado del último cálculo
+const pstate={};                     // estado de las piezas no lineales: led on/off, placa limitada, batería vacía
+function sunAt(h){const x=((h%24)+24)%24;return x<6||x>20?0:Math.sin(Math.PI*(x-6)/14)}
+function solve(){
+  const ids=[];const idx={};
+  for(const s in S.placed){for(const t of ['a','b']){const id=s+'.'+t;idx[id]=ids.length;ids.push(id)}}
+  const n=ids.length;if(!n){SOL={nodes:{},el:{}};return SOL}
+  const els=[];
+  for(const s in S.placed){const p=S.placed[s],c=COMP[p.t],a=idx[s+'.a'],b=idx[s+'.b'];
+    els.push({s,kind:c.kind,a,b,p,c})}
+  for(const cb of S.cables){if(cb.broken)continue;const a=idx[cb.a],b=idx[cb.b];if(a==null||b==null)continue;els.push({cable:cb.id,kind:'cable',a,b})}
+  const sun=sunAt(S.time);
+  let res=null;
+  for(let it=0;it<10;it++){
+    const A=Array.from({length:n},()=>new Float64Array(n)),J=new Float64Array(n);
+    for(let i=0;i<n;i++)A[i][i]+=G_LEAK;
+    const stamp=(a,b,g)=>{A[a][a]+=g;A[b][b]+=g;A[a][b]-=g;A[b][a]-=g};
+    const src=(a,b,I0)=>{J[a]+=I0;J[b]-=I0};
+    for(const e of els){
+      e.g=0;e.i0=0;
+      if(e.kind==='cable'){e.g=G_CABLE}
+      else if(e.kind==='res'||e.kind==='bulb'||e.kind==='fan'||e.kind==='buzzer'){if(!e.p.dead)e.g=1/e.c.R}
+      else if(e.kind==='switch'){if(e.p.on)e.g=G_SW}
+      else if(e.kind==='fuse'){if(!e.p.blown)e.g=G_SW}
+      else if(e.kind==='led'){if(!e.p.dead&&pstate[e.s+'led']){e.g=1/RS_LED;e.i0=VF_LED/RS_LED}}
+      else if(e.kind==='battery'){const soc=(e.p.wh||0)/e.c.cap;
+        if(soc<=0.0005&&!pstate[e.s+'charge']){e.g=0}else{e.g=20;e.i0=batVolt(Math.max(soc,0))*20}}
+      else if(e.kind==='solar'){if(pstate[e.s+'clamp']){e.g=10;e.i0=18*10}else{e.g=1e-4;e.i0=1.5*sun}}
+      if(e.g)stamp(e.a,e.b,e.g);if(e.i0)src(e.a,e.b,e.i0);
+    }
+    const V=gauss(A,J);
+    let changed=false;
+    for(const e of els){
+      const dv=V[e.a]-V[e.b];
+      e.v=dv;e.i=e.g*dv-e.i0;                 // corriente de a hacia b por dentro de la pieza (en una fuente, negativa = entrega)
+      if(e.kind==='led'&&!e.p.dead){const on=!!pstate[e.s+'led'];
+        if(!on&&dv>VF_LED+1e-4){pstate[e.s+'led']=true;changed=true}
+        else if(on&&e.i<0){pstate[e.s+'led']=false;changed=true}}
+      if(e.kind==='solar'){const cl=!!pstate[e.s+'clamp'];
+        if(!cl&&dv>18){pstate[e.s+'clamp']=true;changed=true}
+        else if(cl&&(-e.i>1.5*sun+1e-6||sun<=0)){pstate[e.s+'clamp']=false;changed=true}}
+      if(e.kind==='battery'){const soc=(e.p.wh||0)/e.c.cap;
+        if(soc<=0.0005){const ch=!!pstate[e.s+'charge'];
+          if(!ch&&dv>11.2+1e-3){pstate[e.s+'charge']=true;changed=true}
+          else if(ch&&e.i<0){pstate[e.s+'charge']=false;changed=true}}
+        else if(pstate[e.s+'charge']){pstate[e.s+'charge']=false}}
+    }
+    res={V,els,ids,idx};
+    if(!changed)break;
+  }
+  const out={nodes:{},el:{},cab:{}};
+  res.ids.forEach((id,i)=>out.nodes[id]=res.V[i]);
+  for(const e of res.els){
+    if(e.kind==='cable')out.cab[e.cable]={i:e.i,v:e.v};
+    else out.el[e.s]={kind:e.kind,v:e.v,i:e.i,p:Math.abs(e.v*e.i),on:e.kind==='led'?!!pstate[e.s+'led']&&e.i>0:undefined};
+  }
+  SOL=out;return out;
+}
+function gauss(A,b){const n=b.length;const M=A.map((r,i)=>{const x=Array.from(r);x.push(b[i]);return x});
+  for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+    if(Math.abs(M[p][c])<1e-15)continue;if(p!==c){const t=M[p];M[p]=M[c];M[c]=t}
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/M[c][c];if(f===0)continue;for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k]}}
+  return M.map((r,i)=>Math.abs(r[i])<1e-15?0:r[n]/r[i])}
+
+/* =====================================================================
+   4. ESCENA 3D
+   ===================================================================== */
+const cv=$('#cv');
+let renderer,scene,camera,hemi,amb,sunL,ledLight,bulbLight,skyMat,starMat;
+const meshes={slots:{},comps:{},terms:{},cables:{},markers:{}};
+const pickables=[];
+const cam={az:0.62,el:0.5,dist:9.2,target:new THREE.Vector3(0.35,1.2,-0.2)};
+function tex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t}
+function rnd(seed){let s=seed;return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+function initScene(){
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  scene=new THREE.Scene();scene.background=new THREE.Color('#0b0f14');scene.fog=new THREE.Fog('#0b0f14',14,26);
+  camera=new THREE.PerspectiveCamera(42,1,0.1,60);
+  hemi=new THREE.HemisphereLight('#bcd3ff','#3a2f25',0.4);scene.add(hemi);
+  amb=new THREE.AmbientLight('#ffffff',0.12);scene.add(amb);
+  sunL=new THREE.DirectionalLight('#fff1d6',0);sunL.position.set(6,9,4);scene.add(sunL);
+  ledLight=new THREE.PointLight('#f4fbff',0,6,2);scene.add(ledLight);
+  bulbLight=new THREE.PointLight('#ffc983',0,10,2);scene.add(bulbLight);
+  const R=rnd(7);
+  const ply=tex(256,256,(g,w,h)=>{g.fillStyle='#b98d5b';g.fillRect(0,0,w,h);for(let i=0;i<70;i++){g.strokeStyle=`rgba(${90+R()*40|0},${60+R()*30|0},30,${.15+R()*.2})`;g.lineWidth=1+R()*2;g.beginPath();const y=R()*h;g.moveTo(0,y);g.bezierCurveTo(w*.3,y+R()*8-4,w*.6,y+R()*8-4,w,y+R()*6-3);g.stroke()}});
+  const conc=tex(256,256,(g,w,h)=>{g.fillStyle='#5d6367';g.fillRect(0,0,w,h);for(let i=0;i<5000;i++){const v=R()*40|0;g.fillStyle=`rgba(${70+v},${76+v},${80+v},.35)`;g.fillRect(R()*w,R()*h,2,2)}g.strokeStyle='rgba(0,0,0,.25)';g.lineWidth=2;g.strokeRect(0,0,w,h)});
+  conc.wrapS=conc.wrapT=THREE.RepeatWrapping;conc.repeat.set(3,2);
+  const planks=tex(512,512,(g,w,h)=>{for(let i=0;i<8;i++){const c=110+R()*30|0;g.fillStyle=`rgb(${c},${c*0.72|0},${c*0.48|0})`;g.fillRect(0,i*64,w,64);g.fillStyle='rgba(0,0,0,.35)';g.fillRect(0,i*64,w,2);for(let k=0;k<14;k++){g.strokeStyle='rgba(60,35,15,.22)';g.beginPath();const y=i*64+R()*60;g.moveTo(0,y);g.lineTo(w,y+R()*6-3);g.stroke()}}});
+  planks.wrapS=planks.wrapT=THREE.RepeatWrapping;planks.repeat.set(2,2);
+  const M=(o)=>new THREE.MeshStandardMaterial(Object.assign({roughness:0.85,metalness:0.02},o));
+  const box=(w,h,d,mat,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);scene.add(m);return m};
+  // suelo, paredes y viga
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(6.2,4.4),M({map:planks}));floor.rotation.x=-Math.PI/2;floor.position.set(0,0,0);scene.add(floor);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(14,14),M({color:'#2d3a26',roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.set(5,-0.01,0);scene.add(ground);
+  box(6.4,3.2,0.12,M({map:conc}),0,1.6,-2.26);
+  box(0.12,3.2,4.6,M({map:conc}),-3.16,1.6,0);
+  box(0.14,0.14,2.6,M({color:'#6b4a2c'}),0.7,2.98,-0.95);   // brazo del techo para la bombilla
+  // ventana
+  const win=new THREE.Group();scene.add(win);
+  skyMat=new THREE.MeshBasicMaterial({color:'#0e1a33'});
+  const sky=new THREE.Mesh(new THREE.PlaneGeometry(1.3,0.85),skyMat);sky.position.set(1.55,2.15,-2.19);win.add(sky);
+  starMat=new THREE.PointsMaterial({color:'#ffffff',size:0.025,transparent:true,opacity:1});
+  const sp=[];for(let i=0;i<26;i++)sp.push(1.0+R()*1.1,1.8+R()*0.7,-2.185);const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));win.add(new THREE.Points(sg,starMat));
+  const frameM=M({color:'#3c2a1a'});[[1.42,0.06,1.55,2.6],[1.42,0.06,1.55,1.7],[0.06,0.95,0.84,2.15],[0.06,0.95,2.26,2.15],[0.04,0.85,1.55,2.15]].forEach(([w,h,x,y])=>box(w,h,0.08,frameM,x,y,-2.17));
+  // puerta
+  box(0.06,2.05,0.95,M({color:'#4b3727'}),-3.07,1.02,0.55);box(0.08,0.08,0.08,M({color:'#c9a24a',metalness:.7,roughness:.35}),-3.0,1.0,0.9);
+  // cuadro eléctrico de contrachapado con franja de seguridad
+  box(2.05,1.15,0.05,M({map:ply}),-0.85,1.62,-2.17);
+  const hz=tex(256,32,(g,w,h)=>{g.fillStyle='#f2c522';g.fillRect(0,0,w,h);g.fillStyle='#1b1b1b';for(let x=-32;x<w;x+=32){g.beginPath();g.moveTo(x,h);g.lineTo(x+16,h);g.lineTo(x+32,0);g.lineTo(x+16,0);g.fill()}});
+  box(2.05,0.08,0.06,M({map:hz}),-0.85,2.24,-2.15);
+  const lab=tex(512,96,(g,w,h)=>{g.fillStyle='#b98d5b';g.fillRect(0,0,w,h);g.fillStyle='#2a1b0d';g.font='800 64px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('CUADRO · 12 V',w/2,h/2+4)});
+  const lb=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.22),M({map:lab}));lb.position.set(-0.85,1.15,-2.14);scene.add(lb);
+  // banco de trabajo
+  const wood=M({color:'#7a5532'});box(2.3,0.08,0.85,wood,1.35,0.86,-1.55);[[0.3,-1.9],[2.4,-1.9],[0.3,-1.2],[2.4,-1.2]].forEach(([x,z])=>box(0.07,0.82,0.07,M({color:'#4a3420'}),x,0.41,z));
+  // detalles: estantería con bidón y rótulo
+  box(1.1,0.05,0.35,wood,-2.2,2.0,-2.02);box(0.32,0.45,0.22,M({color:'#9b2c22',roughness:.6}),-2.45,2.25,-2.02);
+  const stencil=tex(512,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='rgba(236,231,220,.55)';g.font='800 96px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('REFUGIO 01',w/2,h/2+6)});
+  const st=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.4),new THREE.MeshStandardMaterial({map:stencil,transparent:true,roughness:1}));st.position.set(-3.09,2.55,-1.2);st.rotation.y=Math.PI/2;scene.add(st);
+  // poste exterior de la placa
+  box(0.1,1.0,0.1,M({color:'#5a6066',metalness:.5,roughness:.5}),3.75,0.5,0.9);
+  // marcadores de sitios libres
+  for(const id in SLOTS){const sl=SLOTS[id];const g=new THREE.Group();g.position.set(...sl.pos);g.rotation.y=sl.rot;scene.add(g);meshes.slots[id]=g;
+    const mk=new THREE.Mesh(new THREE.BoxGeometry(id==='exterior'?1.2:sl.group==='banco'?0.7:0.45,id==='exterior'?0.9:0.5,0.3),new THREE.MeshBasicMaterial({color:'#ffb13b',transparent:true,opacity:0.0,depthWrite:false}));
+    mk.position.set(0,sl.group==='banco'?0.2:id==='exterior'?1.1:sl.group==='techo'?0.1:0,0);mk.userData={type:'slot',slot:id};mk.visible=false;g.add(mk);meshes.markers[id]=mk;pickables.push(mk)}
+  resize();
+}
+const MAT={};
+function mat(k,o){return MAT[k]||(MAT[k]=new THREE.MeshStandardMaterial(Object.assign({roughness:0.6,metalness:0.1},o)))}
+function buildComp(slot){
+  const old=meshes.comps[slot];if(old){old.parent.remove(old);old.traverse(o=>{const i=pickables.indexOf(o);if(i>=0)pickables.splice(i,1)})}
+  for(const t of ['a','b'])delete meshes.terms[slot+'.'+t];
+  delete meshes.comps[slot];
+  const p=S.placed[slot];if(!p)return;
+  const c=COMP[p.t],g=new THREE.Group();meshes.slots[slot].add(g);meshes.comps[slot]=g;
+  const add=(geo,m,x,y,z,rx,ry,rz)=>{const o=new THREE.Mesh(geo,m);o.position.set(x||0,y||0,z||0);if(rx)o.rotation.x=rx;if(ry)o.rotation.y=ry;if(rz)o.rotation.z=rz;o.userData={type:'comp',slot};g.add(o);pickables.push(o);return o};
+  const B=(w,h,d)=>new THREE.BoxGeometry(w,h,d),C=(r1,r2,h,s)=>new THREE.CylinderGeometry(r1,r2,h,s||16);
+  if(c.kind==='battery'){const big=p.t==='bat_l';add(B(big?0.62:0.5,0.38,big?0.36:0.3),mat('bat'+big,{color:big?'#2b4d6e':'#3b3f45',roughness:.5}),0,0.19,0);
+    add(B(big?0.62:0.5,0.05,big?0.36:0.3),mat('batTop',{color:'#1d1f22'}),0,0.405,0);
+    const lb=tex(256,128,(gg,w,h)=>{gg.fillStyle=big?'#2b4d6e':'#3b3f45';gg.fillRect(0,0,w,h);gg.fillStyle='#f2c522';gg.font='700 40px "Share Tech Mono", monospace';gg.textAlign='center';gg.fillText('12 V',w/2,52);gg.fillStyle='#ece7dc';gg.font='700 32px "Share Tech Mono", monospace';gg.fillText(big?'120 Wh':'40 Wh',w/2,98)});
+    const plate=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.17),new THREE.MeshStandardMaterial({map:lb,roughness:.7}));plate.position.set(0,0.2,(big?0.18:0.15)+0.002);g.add(plate);
+    const gauge=new THREE.Mesh(B(0.04,0.3,0.02),new THREE.MeshBasicMaterial({color:'#6fd99a'}));gauge.position.set((big?0.62:0.5)/2-0.05,0.19,(big?0.18:0.15)+0.012);g.add(gauge);g.userData.gauge=gauge}
+  else if(c.kind==='solar'){add(B(0.06,0.06,0.06),mat('steel',{color:'#5a6066',metalness:.6,roughness:.4}),0,1.0,0);
+    const pt=tex(256,192,(gg,w,h)=>{gg.fillStyle='#16233d';gg.fillRect(0,0,w,h);gg.strokeStyle='#8aa4c8';gg.lineWidth=2;for(let x=0;x<=w;x+=32){gg.beginPath();gg.moveTo(x,0);gg.lineTo(x,h);gg.stroke()}for(let y=0;y<=h;y+=32){gg.beginPath();gg.moveTo(0,y);gg.lineTo(w,y);gg.stroke()}});
+    const pan=add(B(1.2,0.04,0.85),new THREE.MeshStandardMaterial({map:pt,roughness:.25,metalness:.4}),0,1.12,0.05,-0.55);
+    add(B(0.22,0.16,0.1),mat('jbox',{color:'#2a2d31'}),0,0.62,0.36)}
+  else if(c.kind==='led'){add(B(0.36,0.14,0.09),mat('ledBox',{color:'#2b3d2f'}),0,0,0);
+    const lm=new THREE.MeshStandardMaterial({color:'#dfe9e3',emissive:'#f4fbff',emissiveIntensity:0,roughness:.3});const lens=add(B(0.26,0.07,0.02),lm,0,0,0.055);g.userData.lens=lens;
+    const sign=tex(256,64,(gg,w,h)=>{gg.fillStyle='#2b3d2f';gg.fillRect(0,0,w,h);gg.fillStyle='#9ee0b4';gg.font='700 30px "Share Tech Mono", monospace';gg.textAlign='center';gg.fillText('SALIDA',w/2,42)});
+    const sg=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.085),new THREE.MeshBasicMaterial({map:sign}));sg.position.set(0,0.13,0.0);g.add(sg)}
+  else if(c.kind==='bulb'){add(C(0.012,0.012,0.36,6),mat('wire',{color:'#1b1b1b'}),0,0.22,0);add(C(0.06,0.05,0.12),mat('sock',{color:'#2a2a2a'}),0,0.0,0);
+    const bm=new THREE.MeshStandardMaterial({color:'#f3eee2',emissive:'#ffc983',emissiveIntensity:0,roughness:.2,transparent:true,opacity:.92});const bl=add(new THREE.SphereGeometry(0.11,20,16),bm,0,-0.14,0);g.userData.lens=bl;
+    add(B(0.4,0.04,0.12),mat('cb',{color:'#2a2a2a'}),0,0.43,0)}
+  else if(c.kind==='fan'){add(C(0.24,0.24,0.06,24),mat('fanR',{color:'#3b4247'}),0,0,0.03,Math.PI/2);const hub=new THREE.Group();hub.position.set(0,0,0.09);g.add(hub);
+    for(let k=0;k<4;k++){const bl=new THREE.Mesh(B(0.07,0.2,0.012),mat('blade',{color:'#c9d2d8'}));bl.position.set(0,0.1,0);const piv=new THREE.Group();piv.rotation.z=k*Math.PI/2;piv.add(bl);hub.add(piv)}g.userData.hub=hub;
+    add(B(0.32,0.1,0.05),mat('fanB',{color:'#2a2d31'}),0,-0.3,0.02)}
+  else if(c.kind==='buzzer'){add(C(0.1,0.1,0.08,20),mat('buz',{color:'#1b1b1b'}),0,0,0.04,Math.PI/2);add(B(0.32,0.1,0.05),mat('fanB',{color:'#2a2d31'}),0,-0.3,0.02)}
+  else { // piezas del cuadro
+    add(B(0.34,0.78,0.06),mat('din',{color:'#d9d5cb',roughness:.5}),0,0,0.02);
+    if(c.kind==='switch'){const lev=add(B(0.1,0.18,0.08),mat('lever',{color:p.on?'#6fd99a':'#ff6a57'}),0,p.on?0.06:-0.06,0.08,p.on?-0.4:0.4);g.userData.lever=lev}
+    else if(c.kind==='fuse'){add(C(0.05,0.05,0.34,14),new THREE.MeshStandardMaterial({color:p.blown?'#3a2f2a':'#e9eef2',roughness:.15,transparent:true,opacity:.85}),0,0,0.08);add(C(0.055,0.055,0.06,14),mat('cap',{color:'#b8bec4',metalness:.8,roughness:.3}),0,0.17,0.08);add(C(0.055,0.055,0.06,14),mat('cap',{}),0,-0.17,0.08)}
+    else if(c.kind==='res'){add(C(0.045,0.045,0.3,14),mat('resB',{color:'#d8c19b'}),0,0,0.09);c.bands.forEach((col,k)=>add(C(0.048,0.048,0.03,14),mat('band'+col,{color:col}),0,0.08-k*0.06,0.09));add(C(0.05,0.05,0.025,14),mat('gold',{color:'#c9a24a',metalness:.8,roughness:.3}),0,-0.11,0.09)}
+  }
+  // bornes
+  const ts=termSet(p.t);
+  for(const t of ['a','b']){const d=ts[t];const id=slot+'.'+t;
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.038,14,10),mat('term'+d.l,{color:d.l==='+'?'#e8473a':d.l==='−'?'#202020':'#c9a24a',metalness:.6,roughness:.35,emissive:'#ffb13b',emissiveIntensity:0}));
+    m.material=m.material.clone();m.position.set(...d.p);g.add(m);
+    const hit=new THREE.Mesh(new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({visible:false}));hit.position.set(...d.p);hit.userData={type:'term',id};g.add(hit);pickables.push(hit);
+    meshes.terms[id]={mesh:m,hit,n:new THREE.Vector3(...d.n).normalize(),slot}}
+  if(c.kind==='solar'){const sg=meshes.slots[slot];sg.updateMatrixWorld(true)}
+  updateMarkers();
+}
+function termWorld(id){const t=meshes.terms[id];if(!t)return null;t.mesh.updateMatrixWorld(true);const p=new THREE.Vector3();t.mesh.getWorldPosition(p);
+  const q=new THREE.Quaternion();t.mesh.parent.getWorldQuaternion(q);return {p,n:t.n.clone().applyQuaternion(q)}}
+function cableColor(cb){const la=(termSet(S.placed[cb.a.split('.')[0]]?.t||'sw')[cb.a.split('.')[1]]||{}).l,lb=(termSet(S.placed[cb.b.split('.')[0]]?.t||'sw')[cb.b.split('.')[1]]||{}).l;
+  if(la==='+'||lb==='+')return '#d8382c';if(la==='−'||lb==='−')return '#222326';return '#2f6fd6'}
+function buildCable(cb){removeCableMesh(cb.id);const A=termWorld(cb.a),Bw=termWorld(cb.b);if(!A||!Bw)return;
+  const d=A.p.distanceTo(Bw.p);const k=Math.min(0.35,0.12+d*0.08);
+  const p1=A.p.clone().addScaledVector(A.n,k),p3=Bw.p.clone().addScaledVector(Bw.n,k);
+  const mid=p1.clone().lerp(p3,0.5);mid.y-=0.08+d*0.09;
+  const curve=new THREE.CatmullRomCurve3([A.p,p1,mid,p3,Bw.p]);
+  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,48,0.02,6,false),new THREE.MeshStandardMaterial({color:cableColor(cb),roughness:.55,emissive:'#ffb13b',emissiveIntensity:0}));
+  const hit=new THREE.Mesh(new THREE.TubeGeometry(curve,24,0.075,5,false),new THREE.MeshBasicMaterial({visible:false}));hit.userData={type:'cable',id:cb.id};
+  scene.add(m);scene.add(hit);pickables.push(hit);meshes.cables[cb.id]={m,hit,curve}}
+function removeCableMesh(id){const c=meshes.cables[id];if(!c)return;scene.remove(c.m);scene.remove(c.hit);c.m.geometry.dispose();c.hit.geometry.dispose();const i=pickables.indexOf(c.hit);if(i>=0)pickables.splice(i,1);delete meshes.cables[id]}
+function rebuildAll(){for(const s in SLOTS)buildComp(s);for(const id in meshes.cables)removeCableMesh(+id);S.cables.forEach(buildCable)}
+
+/* humo y chispas */
+let smokeTex;const puffs=[];
+function smoke(pos,n){if(!smokeTex)smokeTex=tex(64,64,(g,w,h)=>{const r=g.createRadialGradient(32,32,2,32,32,30);r.addColorStop(0,'rgba(210,210,210,.9)');r.addColorStop(1,'rgba(120,120,120,0)');g.fillStyle=r;g.fillRect(0,0,w,h)});
+  for(let i=0;i<(n||14);i++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTex,transparent:true,depthWrite:false,opacity:.8}));sp.position.copy(pos).add(new THREE.Vector3((Math.random()-.5)*.1,Math.random()*.1,(Math.random()-.5)*.1));sp.scale.setScalar(.12);sp.userData={t:0,life:1.8+Math.random()*1.2,vx:(Math.random()-.5)*.15,vz:(Math.random()-.5)*.15,vy:.35+Math.random()*.3,delay:i*0.06};scene.add(sp);puffs.push(sp)}}
+function stepPuffs(dt){for(let i=puffs.length-1;i>=0;i--){const p=puffs[i],u=p.userData;if(u.delay>0){u.delay-=dt;p.visible=false;continue}p.visible=true;u.t+=dt;const k=u.t/u.life;
+  p.position.x+=u.vx*dt;p.position.y+=u.vy*dt;p.position.z+=u.vz*dt;p.scale.setScalar(.12+k*.6);p.material.opacity=.75*(1-k);if(k>=1){scene.remove(p);p.material.dispose();puffs.splice(i,1)}}}
+function compPos(slot){const g=meshes.comps[slot]||meshes.slots[slot];const v=new THREE.Vector3();g.getWorldPosition(v);return v}
+
+/* =====================================================================
+   5. SONIDO (solo tras tocar algo)
+   ===================================================================== */
+let AC=null;
+function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume();return AC}
+function beep(f,d,type,vol){const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=vol||0.05;o.connect(g);g.connect(a.destination);const t=a.currentTime;g.gain.setValueAtTime(vol||0.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.start(t);o.stop(t+d+0.02)}
+function pop(){const a=ac();if(!a)return;const n=a.createBufferSource(),b=a.createBuffer(1,a.sampleRate*0.25,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);n.buffer=b;const g=a.createGain();g.gain.value=.25;n.connect(g);g.connect(a.destination);n.start()}
+function thunder(){const a=ac();if(!a)return;const n=a.createBufferSource(),b=a.createBuffer(1,a.sampleRate*2.2,a.sampleRate),d=b.getChannelData(0);let l=0;for(let i=0;i<d.length;i++){l=l*0.985+(Math.random()*2-1)*0.06;d[i]=l*Math.pow(1-i/d.length,1.5)*4}n.buffer=b;const f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=380;const g=a.createGain();g.gain.value=.9;n.connect(f);f.connect(g);g.connect(a.destination);n.start()}
+let buzzOsc=null;
+function setBuzz(on){const a=on?ac():AC;if(!a)return;if(on&&!buzzOsc){const o=a.createOscillator(),g=a.createGain();o.type='square';o.frequency.value=2300;g.gain.value=0.02;o.connect(g);g.connect(a.destination);o.start();buzzOsc={o,g}}else if(!on&&buzzOsc){buzzOsc.o.stop();buzzOsc=null}}
+
+/* =====================================================================
+   6. RETOS
+   ===================================================================== */
+const PASS=[
+  {id:'r1',t:'Calculo la resistencia que protege un LED con la ley de Ohm',f:'U = R × I'},
+  {id:'r2',t:'Calculo la energía que gasta un aparato y elijo una batería que llegue',f:'E = P × t'},
+  {id:'r3',t:'Encuentro un cable cortado con el multímetro en continuidad',f:'Continuidad'}];
+const ledI=()=>{const e=SOL.el.puerta;return e&&e.kind==='led'?Math.max(0,e.i):0};
+const ledOn=()=>{const e=SOL.el.puerta;return !!(e&&e.on&&S.placed.puerta&&!S.placed.puerta.dead)};
+const bulbP=()=>{const e=SOL.el.techo;return e&&e.kind==='bulb'&&!S.placed.techo.dead?e.p:0};
+const RETOS=[
+ {id:'r1',name:'Luz de emergencia',
+  steps:[
+   {k:'input',unit:'Ω',
+    q:'La batería da <b>12 V</b>. El LED de emergencia necesita <b>2 V</b> y aguanta como mucho <b>20 mA</b> (0,02 A). ¿Qué resistencia tienes que poner en serie para protegerlo?',
+    ok:v=>v>=475&&v<=525,
+    wrong:v=>Math.abs(v-600)<20?'Casi. Has usado los 12 V enteros, pero el LED ya se queda con 2 V. ¿Cuánta tensión le sobra a la resistencia?':Math.abs(v-100)<10?'Esa sería la del propio LED. La resistencia se queda con lo que sobra: 12 − 2.':Math.abs(v-0.5)<0.05||Math.abs(v-5)<0.5?'Revisa las unidades: 20 mA son 0,02 A.':'Todavía no. Prueba con una pista.',
+    hints:['La resistencia tiene que «quedarse» con la tensión que le sobra al LED: 12 V − 2 V = 10 V.','Ley de Ohm: R = U ÷ I. Divide esos 10 V entre 0,02 A.'],
+    after:'Exacto: 10 V ÷ 0,02 A = 500 Ω.',formula:'R = (12 − 2) V ÷ 0,02 A = 500 Ω',
+    mentor:'Antes de cablear nada, calculamos. Así no quemamos el LED.'},
+   {k:'action',
+    q:'En las tiendas no venden 500 Ω. En tu caja de piezas tienes <b>220, 470, 560 y 1.000 Ω</b>. Elige una, ponla en el cuadro y monta el circuito: batería <b>+</b> → interruptor → resistencia → LED <b>+</b>, y LED <b>−</b> → batería <b>−</b>. Después enciende el interruptor.',
+    check:()=>ledOn()&&ledI()>=0.015&&ledI()<=0.0205,hold:2,
+    mentor:'Piensa cuál elegir: si la resistencia es menor de 500 Ω, pasa más corriente de la que aguanta el LED.',
+    after:'¡Luz! Con 560 Ω pasan unos 18 mA: por debajo de 20 mA y con buena luz.'}
+  ],
+  setup(){S.time=20.5}},
+ {id:'r2',name:'¿Aguanta la noche?',
+  steps:[
+   {k:'action',q:'Ahora una luz para leer. Coge la <b>bombilla de 12 V y 5 W</b> de tu caja de piezas, cuélgala del techo y conéctala a la batería: un borne al <b>+</b> y el otro al <b>−</b>.',
+    check:()=>bulbP()>3,hold:1,mentor:'La bombilla gasta mucho más que el LED. Vamos a ver si la batería llega.',after:'Encendida. Ahora, a calcular.'},
+   {k:'input',unit:'Wh',q:'La noche dura <b>10 horas</b> (de 20:00 a 06:00) y la bombilla gasta <b>5 W</b>. ¿Cuánta energía necesita para toda la noche?',
+    ok:v=>Math.abs(v-50)<0.5,wrong:v=>Math.abs(v-2)<0.1||Math.abs(v-0.5)<0.05?'Eso es dividir. La energía crece cuanto más tiempo está encendida: multiplica.':Math.abs(v-15)<0.5?'Eso es sumar. La energía es potencia por tiempo.':'Todavía no. Prueba con una pista.',
+    hints:['Energía = potencia × tiempo.','5 W durante 10 h → 5 × 10 = ? Wh (vatios-hora).'],after:'Eso es: 5 W × 10 h = 50 Wh.',formula:'E = 5 W × 10 h = 50 Wh'},
+   {k:'choice',q:'La batería pequeña guarda <b>40 Wh</b> cuando está llena. ¿Aguanta toda la noche con la bombilla encendida?',choices:['Sí, aguanta','No, se queda corta'],ok:1,
+    wrong:'Fíjate: la bombilla necesita 50 Wh y la batería solo tiene 40 Wh. Se apagaría de madrugada.',after:'Bien visto: 40 Wh no llegan a 50 Wh.'},
+   {k:'action',q:'Con tu Energía, compra la <b>batería grande (120 Wh)</b> en la tienda y ponla en el banco. Los cables se quedan donde estaban.',
+    check:()=>S.placed.banco&&S.placed.banco.t==='bat_l',hold:0.2,mentor:'Una batería con más vatios-hora guarda más energía, aunque sigue dando 12 V.',after:'Batería grande en su sitio.'},
+   {k:'night',q:'Deja la bombilla encendida y pulsa <b>⏩ Pasar la noche</b>. Tiene que llegar encendida a las 06:00.',mentor:'Mira el indicador de la batería mientras pasan las horas.',after:'¡Ha aguantado toda la noche!'},
+   {k:'day',q:'De día, la <b>placa solar</b> (te la regalo) recarga la batería. Ponla en el exterior y conecta placa <b>+</b> con batería <b>+</b> y placa <b>−</b> con batería <b>−</b>. Luego pulsa <b>⏩ Pasar el día</b>.',
+    mentor:'Al mediodía es cuando más carga: el sol está más alto.',after:'Batería llena otra vez. El refugio ya vive solo de día y de noche.'}
+  ],
+  setup(){S.inv.bulb=(S.inv.bulb||0)+(S.placed.techo?0:1);S.time=20}},
+ {id:'r3',name:'El cable cortado',
+  steps:[
+   {k:'action',q:'Primero, comprueba que la <b>luz de emergencia</b> funciona: si la desmontaste, vuelve a montarla con su resistencia y enciéndela.',check:()=>ledOn()&&ledI()>0.008,hold:0.5,mentor:'Esta noche viene tormenta. Que la luz de emergencia esté lista.',after:'Lista.'},
+   {k:'storm',q:'Se acerca una tormenta… Pulsa <b>Seguir</b> cuando estés preparado.',mentor:'Agárrate.'},
+   {k:'action',q:'Un rayo ha dañado un cable y la luz de emergencia no enciende. Por fuera todos parecen iguales. Coge el <b>multímetro</b>, ponlo en continuidad <b>)))</b> y toca los cables uno a uno. Si pita, está bien. Si marca <b>OL</b>, está cortado.',
+    check:()=>!!S.found,hold:0,mentor:'Para medir continuidad lo mejor es apagar antes el interruptor.',after:'¡Encontrado! Ese es el cable cortado.'},
+   {k:'action',q:'Quita el cable cortado con <b>Quitar</b> y pon uno nuevo con <b>Cable</b>.',check:()=>!S.cables.some(c=>c.broken)&&ledOn()&&ledI()>0.008,hold:1,after:'Reparado. ¡Luz otra vez!'}
+  ],
+  setup(){S.time=21}}
+];
+function reto(){return S.reto!=null&&S.reto<RETOS.length?RETOS[S.reto]:null}
+function stepObj(){const r=reto();return r?r.steps[S.step]:null}
+let holdT=0,hintN=0,tries=0;
+function nextStep(quiet){const r=reto(),st=stepObj();if(!r)return;
+  if(st&&st.after&&!quiet)say(st.after);
+  holdT=0;hintN=0;tries=0;S.step++;
+  if(S.step>=r.steps.length){finishReto();return}
+  const ns=stepObj();if(ns.mentor)setTimeout(()=>say(ns.mentor),1600);
+  if(ns.k==='day'){S.inv.panel=(S.inv.panel||0)+(S.placed.exterior||S.inv.panel?0:1)}
+  save();renderSide();renderTimeBtn()}
+function finishReto(){const r=reto();S.done[r.id]=new Date().toISOString().slice(0,10);S.e+=40;S.reto++;S.step=0;
+  const p=PASS.find(x=>x.id===r.id);beep(660,.12,'triangle',.08);setTimeout(()=>beep(990,.2,'triangle',.08),130);
+  const nr=reto();save();
+  modal(`<h3>Reto superado</h3><p class="muted">${esc(r.name)}</p><p class="big">+40 ⚡</p><p><b>Nuevo en tu Pasaporte:</b><br>${esc(p.t)}</p>
+    ${nr?`<p>Siguiente reto: <b>${esc(nr.name)}</b>.</p>`:`<p>Has terminado los tres retos. Ahora el refugio es tuyo: compra piezas y prueba lo que quieras.</p>`}
+    <div class="row" style="justify-content:flex-end"><button class="btn pri" id="mOk">${nr?'Al siguiente reto':'Modo libre'}</button></div>`,close=>{$('#mOk').onclick=()=>{close();if(nr){nr.setup&&nr.setup();const s0=stepObj();say(s0.mentor||'Vamos allá.')}else say('Modo libre. Ideas: un timbre en la puerta, un ventilador para el verano o dos luces con dos interruptores.');renderAll()}})}
+
+/* =====================================================================
+   7. SIMULACIÓN EN EL TIEMPO
+   ===================================================================== */
+let lapse=null;           // {from,to,rate,kind}
+let ledStress=0,lastFound=false;
+function physics(dt){
+  solve();
+  // fusibles primero, luego cables
+  let changed=false;
+  for(const s in S.placed){const p=S.placed[s],e=SOL.el[s];if(!e)continue;
+    if(e.kind==='fuse'&&!p.blown&&Math.abs(e.i)>COMP[p.t].rating){p.blown=true;changed=true;pop();smoke(compPos(s),8);flash(.25);toast('¡Fusible fundido! Ha protegido el circuito de un cortocircuito.','bad');say('El fusible se ha sacrificado: pasaban '+fmt(Math.abs(e.i),1)+' A. Busca dónde se juntan el + y el − sin nada en medio.');buildComp(s)}}
+  if(changed)solve();changed=false;
+  for(const cb of S.cables.slice()){const r=SOL.cab[cb.id];if(r&&Math.abs(r.i)>15){const A=termWorld(cb.a),B=termWorld(cb.b);smoke(A.p.clone().lerp(B.p,.5),18);pop();flash(.3);
+      S.cables=S.cables.filter(x=>x!==cb);removeCableMesh(cb.id);changed=true;toast('¡Cortocircuito! El cable se ha quemado.','bad');
+      say('Has unido el + y el − de la batería sin nada en medio: pasan cientos de amperios. En la vida real eso quema cables y provoca incendios. Pon un fusible en el camino.')}}
+  if(changed)solve();
+  // LED: se quema si se pasa de corriente
+  const lp=S.placed.puerta,le=SOL.el.puerta;
+  if(lp&&le&&le.kind==='led'&&!lp.dead){const I=Math.max(0,le.i);
+    if(I>0.03){burnLed(I)}else if(I>0.0205){ledStress+=dt;if(ledStress>3)burnLed(I)}else ledStress=Math.max(0,ledStress-dt)}
+  const bp=S.placed.techo,be=SOL.el.techo;if(bp&&be&&!bp.dead&&be.p>10){bp.dead=true;pop();smoke(compPos('techo'),10);toast('La bombilla se ha fundido: le llegaba demasiada tensión.','bad');buildComp('techo');solve()}
+  // baterías: energía que entra y sale
+  if(lapse){const dh=dt*lapse.rate;
+    for(const s in S.placed){const p=S.placed[s],e=SOL.el[s];if(e&&e.kind==='battery'){p.wh=clamp((p.wh||0)+e.v*e.i*dh/1,0,COMP[p.t].cap)}}}
+}
+function burnLed(I){const lp=S.placed.puerta;lp.dead=true;ledStress=0;S.stats.ledsQuemados++;pop();smoke(compPos('puerta'),16);flash(.15);buildComp('puerta');solve();
+  toast('¡El LED se ha quemado!','bad');
+  say(`Pasaban ${fmt(I*1000,0)} mA y el LED aguanta 20 mA. ${I>0.03?'Con tanta corriente se quema enseguida.':'Un poco por encima también lo estropea, solo que tarda más.'} ${S.reto===0?'Te dejo un LED nuevo: con Montar, toca el LED quemado y se cambia. Fíjate en la resistencia.':''}`);
+  if(S.reto===0)S.inv.led=(S.inv.led||0)+1;else if(!S.inv.led)say('Puedes comprar otro LED en la tienda.');
+  save();renderSide()}
+
+/* =====================================================================
+   8. INTERACCIÓN
+   ===================================================================== */
+let tool='montar',selItem=null,cableA=null,meterMode='V',probe=null;
+const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
+function pick(x,y){const r=cv.getBoundingClientRect();ptr.set(((x-r.left)/r.width)*2-1,-((y-r.top)/r.height)*2+1);ray.setFromCamera(ptr,camera);
+  const hits=ray.intersectObjects(pickables,false).filter(h=>h.object.visible!==false||h.object.userData.type==='term'||h.object.userData.type==='cable');
+  const vis=hits.filter(h=>{const u=h.object.userData;if(u.type==='slot')return h.object.visible;return true});
+  const pr={term:0,cable:1,slot:2,comp:3};
+  if(tool==='montar'&&selItem){const s=vis.find(h=>h.object.userData.type==='slot');if(s)return s.object.userData}
+  vis.sort((a,b)=>(pr[a.object.userData.type]-pr[b.object.userData.type])||(a.distance-b.distance));
+  if(tool==='montar'||tool==='quitar'){const c=vis.find(h=>h.object.userData.type==='comp');const cb=vis.find(h=>h.object.userData.type==='cable');
+    if(tool==='quitar'){if(cb&&(!c||cb.distance<c.distance+0.3))return cb.object.userData;if(c)return c.object.userData;return null}
+    if(c)return c.object.userData;return vis[0]?vis[0].object.userData:null}
+  if(tool==='medir'&&(meterMode==='A'||meterMode==='C')){const cb=vis.find(h=>h.object.userData.type==='cable');if(cb)return cb.object.userData;const c=vis.find(h=>h.object.userData.type==='comp');return c?c.object.userData:null}
+  if(tool==='medir'&&meterMode==='R'){const c=vis.find(h=>h.object.userData.type==='comp');return c?c.object.userData:(vis[0]?vis[0].object.userData:null)}
+  return vis[0]?vis[0].object.userData:null}
+function onTap(x,y){ac();const u=pick(x,y);
+  if(tool==='montar'){
+    if(u&&u.type==='slot'&&selItem){place(u.slot,selItem);return}
+    if(u&&(u.type==='comp'||u.type==='term')){const slot=u.slot||meshes.terms[u.id].slot;const p=S.placed[slot];
+      if(p&&COMP[p.t].kind==='switch'){p.on=!p.on;beep(p.on?880:440,.05,'square',.05);buildComp(slot);save();solve();return}
+      if(p&&p.dead){if(S.inv[p.t]>0){S.inv[p.t]--;S.placed[slot]={t:p.t};buildComp(slot);S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(buildCable);save();solve();toast(COMP[p.t].name+' nuevo en su sitio.','good');renderSide()}else hint('Está quemado y no te quedan de repuesto. Cómpralo en la tienda.');return}
+      if(p&&COMP[p.t].kind==='fuse'&&p.blown){if(S.inv.fuse>0){S.inv.fuse--;p.blown=false;buildComp(slot);save();toast('Fusible cambiado.','good');renderSide()}else hint('No te quedan fusibles. Cómpralos en la tienda.');return}
+      if(p){hint(`${COMP[p.t].name}${p.dead?' (quemado)':''}. Para quitarla, usa la herramienta Quitar.`);return}}
+    if(selItem)hint('Toca uno de los huecos iluminados.');else hint('Elige una pieza de tu caja de piezas y luego toca dónde ponerla.');return}
+  if(tool==='cable'){
+    if(!u||u.type!=='term'){hint(cableA?'Toca el segundo borne.':'Toca un borne: las bolitas doradas, rojas (+) o negras (−).');return}
+    if(!cableA){cableA=u.id;highlight();hint('Ahora toca el borne donde va el otro extremo.');beep(700,.04,'sine',.04);return}
+    if(cableA===u.id){cableA=null;highlight();hint('Cable cancelado.');return}
+    const a=cableA,b=u.id;cableA=null;highlight();
+    if(S.cables.some(c=>(c.a===a&&c.b===b)||(c.a===b&&c.b===a))){hint('Esos dos bornes ya están unidos.');return}
+    const cb={id:S.nextId++,a,b,broken:false};S.cables.push(cb);buildCable(cb);beep(900,.05,'sine',.05);save();solve();hint('Cable puesto. Toca otro borne para seguir cableando.');return}
+  if(tool==='quitar'){
+    if(u&&u.type==='cable'){const cb=S.cables.find(c=>c.id===u.id);S.cables=S.cables.filter(c=>c.id!==u.id);removeCableMesh(u.id);beep(300,.06,'sawtooth',.04);
+      if(cb&&cb.broken)toast('Cable cortado retirado.','good');save();solve();hint('Cable quitado.');return}
+    const slot=u&&(u.slot||(u.type==='term'&&meshes.terms[u.id].slot));
+    if(slot&&S.placed[slot]){removeComp(slot);return}
+    hint('Toca un cable o una pieza para quitarla.');return}
+  if(tool==='medir')measure(u)}
+function place(slot,k){const c=COMP[k],sl=SLOTS[slot];if(sl.group!==c.group){hint(`Esa pieza va en ${SLOTS[Object.keys(SLOTS).find(s=>SLOTS[s].group===c.group)].label}.`);return}
+  if(!(S.inv[k]>0)){hint('No te quedan de esas.');return}
+  const prev=S.placed[slot];
+  if(prev&&COMP[prev.t].kind!==c.kind){hint('Ese hueco está ocupado. Quita antes lo que hay.');return}
+  if(prev&&!prev.dead)S.inv[prev.t]=(S.inv[prev.t]||0)+1;
+  S.inv[k]--;S.placed[slot]={t:k};if(c.kind==='battery')S.placed[slot].wh=c.cap;if(c.kind==='switch')S.placed[slot].on=false;
+  selItem=S.inv[k]>0?selItem:null;
+  buildComp(slot);highlight();S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(buildCable);
+  beep(520,.06,'triangle',.06);save();solve();renderSide();updateMarkers();hint(`${c.name} colocada.`)}
+function removeComp(slot){const p=S.placed[slot];if(!p)return;delete S.placed[slot];
+  if(!p.dead)S.inv[p.t]=(S.inv[p.t]||0)+1;else toast('Pieza quemada a la basura.','');
+  S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(cb=>removeCableMesh(cb.id));
+  S.cables=S.cables.filter(cb=>!(cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')));
+  buildComp(slot);beep(300,.06,'sawtooth',.04);save();solve();renderSide();hint(`${COMP[p.t].name} retirada, con sus cables.`)}
+function lcd(mode,val){$('#lcdMode').textContent={V:'V⎓',A:'A · pinza',R:'Ω',C:'))) continuidad'}[mode];$('#lcdVal').textContent=val}
+function measure(u){
+  if(meterMode==='V'){if(!u||u.type!=='term'){hint('En voltios: toca un borne con la punta roja y otro con la negra.');return}
+    if(!probe){probe=u.id;highlight();lcd('V','· · ·');hint('Punta roja puesta. Ahora toca otro borne con la negra.');beep(700,.03,'sine',.03);return}
+    const v=(SOL.nodes[probe]||0)-(SOL.nodes[u.id]||0);probe=null;highlight();lcd('V',(Math.abs(v)<0.005?'0.00':v.toFixed(2))+' V');beep(1200,.03,'sine',.03);
+    hint(Math.abs(v)<0.01?'0 V: entre esos dos puntos no hay diferencia de tensión.':`Hay ${fmt(Math.abs(v),2)} V entre esos dos bornes.`);return}
+  if(meterMode==='A'){if(!u||u.type!=='cable'){hint('Con la pinza: toca un cable y te digo cuánta corriente pasa.');return}
+    const r=SOL.cab[u.id],I=r?Math.abs(r.i):0;lcd('A',I<1?(I*1000).toFixed(1)+' mA':I.toFixed(2)+' A');beep(1200,.03,'sine',.03);
+    hint(I<1e-4?'No pasa corriente por ese cable.':`Por ese cable pasan ${I<1?fmt(I*1000,1)+' mA':fmt(I,2)+' A'}.`);return}
+  if(meterMode==='R'){const slot=u&&(u.slot||(u.type==='term'&&meshes.terms[u.id].slot));if(!slot||!S.placed[slot]){hint('En ohmios: toca una pieza (mejor con el circuito apagado).');return}
+    const p=S.placed[slot],c=COMP[p.t],e=SOL.el[slot];
+    if(c.kind==='battery'||c.kind==='solar'){lcd('R','– – –');hint('No se mide la resistencia de una batería ni de una placa: dan tensión y estropearían la lectura.');return}
+    if(e&&Math.abs(e.i)>0.001){lcd('R','ERR');hint('Esa pieza tiene corriente. Apaga el interruptor antes de medir ohmios.');return}
+    let val;if(c.kind==='res'||c.kind==='bulb'||c.kind==='fan'||c.kind==='buzzer')val=p.dead?'OL':(c.R*(1+((slot.charCodeAt(1)||3)%5-2)*0.004)).toFixed(1)+' Ω';
+    else if(c.kind==='switch')val=p.on?'0.0 Ω':'OL';else if(c.kind==='fuse')val=p.blown?'OL':'0.0 Ω';else if(c.kind==='led')val='OL';
+    lcd('R',val);beep(1200,.03,'sine',.03);hint(c.kind==='led'?'Un LED no se mide así: solo deja pasar corriente en un sentido.':val==='OL'?'OL: el circuito está abierto ahí dentro.':`${c.name}: ${val}.`);return}
+  if(meterMode==='C'){if(!u||(u.type!=='cable'&&u.type!=='comp')){hint('En continuidad: toca un cable. Si pita, está bien.');return}
+    if(u.type==='cable'){const cb=S.cables.find(c=>c.id===u.id);if(cb.broken){lcd('C','OL');beep(140,.15,'sine',.03);S.found=true;hint('OL y sin pitido: ¡este cable está cortado por dentro!');save()}
+      else{lcd('C','0.0 Ω');beep(2600,.35,'square',.06);hint('Pita: este cable está bien.')}return}
+    const slot=u.slot,p=S.placed[slot],c=COMP[p.t];const okc=(c.kind==='fuse'&&!p.blown)||(c.kind==='switch'&&p.on);lcd('C',okc?'0.0 Ω':'OL');if(okc)beep(2600,.35,'square',.06);hint(okc?'Pita: pasa la corriente.':'No pita: ahí el circuito está abierto.')}}
+let hintT=null;function hint(t){$('#hint').textContent=t;clearTimeout(hintT);hintT=setTimeout(()=>{$('#hint').textContent=baseHint()},5200)}
+function baseHint(){if(tool==='montar')return selItem?`Coloca: ${COMP[selItem].name}. Toca un hueco iluminado.`:'Montar: elige una pieza de tu caja. Toca el interruptor para encenderlo.';
+  if(tool==='cable')return cableA?'Toca el segundo borne.':'Cable: toca un borne y después otro.';
+  if(tool==='medir')return {V:'Voltios: borne con la punta roja y otro con la negra.',A:'Pinza: toca un cable.',R:'Ohmios: toca una pieza apagada.',C:'Continuidad: toca un cable. Si pita, está bien.'}[meterMode];
+  return 'Quitar: toca un cable o una pieza.'}
+let toastT=null;function toast(t,kind){const e=$('#toast');e.textContent=t;e.className='toast '+(kind||'');e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,3200)}
+function flash(o){const f=$('#flash');f.style.opacity=o;setTimeout(()=>f.style.opacity=0,90)}
+function say(t){$('#mentorTxt').textContent=t}
+function highlight(){const base=tool==='cable'||(tool==='medir'&&meterMode==='V')?0.35:0;for(const id in meshes.terms){const m=meshes.terms[id].mesh;m.material.emissiveIntensity=(id===cableA||id===probe)?1.2:base}}
+function updateMarkers(){for(const id in meshes.markers){const mk=meshes.markers[id];const ok=tool==='montar'&&selItem&&SLOTS[id].group===COMP[selItem].group&&(!S.placed[id]||COMP[S.placed[id].t].kind===COMP[selItem].kind);mk.visible=!!ok;mk.material.opacity=ok?0.28:0}}
+function setTool(t){tool=t;cableA=null;probe=null;$$('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));$('#meter').hidden=t!=='medir';if(t!=='montar'){selItem=null;renderSide()}highlight();updateMarkers();$('#hint').textContent=baseHint()}
+$$('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$$('#meter [data-m]').forEach(b=>b.onclick=()=>{meterMode=b.dataset.m;probe=null;highlight();$$('#meter [data-m]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));lcd(meterMode,'– – –');$('#hint').textContent=baseHint();beep(500,.03,'square',.03)});
+
+/* cámara: arrastrar para girar, pellizcar o rueda para acercar */
+const pts=new Map();let downAt=null,dragged=false,pinch0=0,dist0=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pts.size===1){downAt={x:e.clientX,y:e.clientY,az:cam.az,el:cam.el};dragged=false}
+  if(pts.size===2){const [p,q]=[...pts.values()];pinch0=Math.hypot(p.x-q.x,p.y-q.y);dist0=cam.dist;dragged=true}});
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId)){hover(e);return}pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pts.size===2){const [p,q]=[...pts.values()];const d=Math.hypot(p.x-q.x,p.y-q.y);if(pinch0)cam.dist=clamp(dist0*pinch0/d,5.5,13);return}
+  if(downAt){const dx=e.clientX-downAt.x,dy=e.clientY-downAt.y;if(Math.hypot(dx,dy)>7)dragged=true;if(dragged){cam.az=clamp(downAt.az-dx*0.006,-0.15,1.25);cam.el=clamp(downAt.el+dy*0.004,0.18,0.95);cv.style.cursor='grabbing'}}});
+const up=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);if(pts.size===0){cv.style.cursor='';if(downAt&&!dragged)onTap(e.clientX,e.clientY);downAt=null}};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{pts.delete(e.pointerId);downAt=null});
+cv.addEventListener('wheel',e=>{e.preventDefault();cam.dist=clamp(cam.dist*(1+Math.sign(e.deltaY)*0.08),5.5,13)},{passive:false});
+function hover(e){if(e.pointerType!=='mouse')return;const u=pick(e.clientX,e.clientY);cv.classList.toggle('pick',!!u)}
+
+/* =====================================================================
+   9. PANEL: reto, banco, tienda y pasaporte
+   ===================================================================== */
+const ICON={battery:'<svg viewBox="0 0 30 30"><rect x="4" y="9" width="22" height="15" rx="2" fill="#3b3f45"/><rect x="8" y="6" width="4" height="3" fill="#e8473a"/><rect x="18" y="6" width="4" height="3" fill="#202020"/><path d="M11 16h8" stroke="#f2c522" stroke-width="2"/></svg>',
+ solar:'<svg viewBox="0 0 30 30"><path d="M5 20l4-12h16l-4 12z" fill="#16233d" stroke="#8aa4c8"/><path d="M15 20v6M10 26h10" stroke="#a7aea9" stroke-width="2"/></svg>',
+ switch:'<svg viewBox="0 0 30 30"><rect x="9" y="4" width="12" height="22" rx="2" fill="#d9d5cb"/><rect x="12" y="9" width="6" height="8" rx="1" fill="#6fd99a"/></svg>',
+ fuse:'<svg viewBox="0 0 30 30"><rect x="11" y="6" width="8" height="18" rx="3" fill="#e9eef2"/><path d="M15 6v18" stroke="#c9a24a" stroke-width="1.5"/></svg>',
+ res:'<svg viewBox="0 0 30 30"><path d="M3 15h6M21 15h6" stroke="#b8bec4" stroke-width="2"/><rect x="9" y="10" width="12" height="10" rx="4" fill="#d8c19b"/><path d="M12 10v10M15 10v10M18 10v10" stroke="BANDS" stroke-width="1.6"/></svg>',
+ led:'<svg viewBox="0 0 30 30"><rect x="5" y="9" width="20" height="10" rx="2" fill="#2b3d2f"/><rect x="8" y="12" width="14" height="4" rx="1" fill="#dfe9e3"/><path d="M11 19v6M19 19v4" stroke="#b8bec4" stroke-width="1.6"/></svg>',
+ bulb:'<svg viewBox="0 0 30 30"><circle cx="15" cy="13" r="7" fill="#f3eee2"/><rect x="12" y="19" width="6" height="5" fill="#2a2a2a"/></svg>',
+ fan:'<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="11" fill="#3b4247"/><path d="M15 15l-2-8h4zM15 15l8-2v4zM15 15l2 8h-4zM15 15l-8 2v-4z" fill="#c9d2d8"/></svg>',
+ buzzer:'<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="9" fill="#1b1b1b"/><circle cx="15" cy="15" r="2" fill="#555"/><path d="M26 10a8 8 0 0 1 0 10" stroke="#ffb13b" stroke-width="2" fill="none"/></svg>'};
+const icon=k=>{const c=COMP[k];let s=ICON[c.kind]||'';if(c.kind==='res')s=s.replace('stroke="BANDS"',`stroke="${c.bands[0]}"`);return s};
+function renderReto(){const r=reto(),box=$('#reto');
+  if(!r){box.innerHTML=`<h2><small>Retos superados: 3 de 3</small>Modo libre</h2><p class="q">El refugio es tuyo. Compra piezas en la tienda y prueba combinaciones. Algunas ideas:</p>
+    <ul class="list"><li class="item"><span class="tx"><b>Un timbre</b><small>Zumbador en la pared con su propio interruptor.</small></span></li><li class="item"><span class="tx"><b>Dos luces, dos interruptores</b><small>Cada luz con su hueco en el cuadro.</small></span></li><li class="item"><span class="tx"><b>Un fusible que proteja todo</b><small>Ponlo justo después del + de la batería.</small></span></li></ul>`;return}
+  const st=stepObj();
+  const dots=r.steps.map((x,i)=>`<i class="${i<S.step?'done':i===S.step?'now':''}"></i>`).join('');
+  let ctl='';
+  if(st.k==='input')ctl=`<form class="answer" id="ansF" autocomplete="off"><label for="ans"><input id="ans" inputmode="decimal" placeholder="?" aria-label="Tu respuesta en ${esc(st.unit)}"><span>${esc(st.unit)}</span></label><button class="btn pri" type="submit">Comprobar</button></form>
+    <div class="row"><button class="btn sm" id="hintB" type="button">${hintN<st.hints.length?'Dame una pista':'Sin más pistas'}</button></div><div id="hintsBox">${st.hints.slice(0,hintN).map(h=>`<p class="fb">💡 ${esc(h)}</p>`).join('')}</div><p class="fb" id="fb"></p>`;
+  else if(st.k==='choice')ctl=`<div class="row">${st.choices.map((c,i)=>`<button class="btn" data-ch="${i}">${esc(c)}</button>`).join('')}</div><p class="fb" id="fb"></p>`;
+  else if(st.k==='storm')ctl=`<div class="row"><button class="btn pri" id="stormB">Seguir</button></div>`;
+  else if(st.k==='night'||st.k==='day')ctl=`<p class="fb" id="fb">Usa el botón ⏩ de arriba, junto a la hora.</p>`;
+  else ctl=`<p class="fb" id="fb">${S.reto===0&&S.step===1?'Usa las herramientas de abajo: Montar, Cable, Medir y Quitar.':''}</p>`;
+  box.innerHTML=`<h2><small>Reto ${S.reto+1} de ${RETOS.length} · paso ${S.step+1} de ${r.steps.length}</small>${esc(r.name)}</h2><div class="steps">${dots}</div><p class="q">${st.q}</p>${ctl}`;
+  const f=$('#ansF');if(f){f.onsubmit=e=>{e.preventDefault();let raw=String($('#ans').value).replace(/\s/g,'');if(/^\d{1,3}(\.\d{3})+$/.test(raw))raw=raw.replace(/\./g,'');const v=parseFloat(raw.replace(',','.'));if(!isFinite(v)){$('#fb').textContent='Escribe un número.';return}
+      if(st.ok(v)){$('#fb').className='fb good';$('#fb').innerHTML=esc(st.after)+(st.formula?`<br><span class="formula">${esc(st.formula)}</span>`:'');beep(880,.1,'triangle',.07);setTimeout(()=>{say(st.after);nextStep(true)},1800);$('#ansF').querySelector('button').disabled=true}
+      else{tries++;$('#fb').className='fb bad';$('#fb').textContent=st.wrong(v);beep(200,.12,'sawtooth',.04);if(tries>=2&&hintN<st.hints.length){hintN++;renderReto();$('#fb').className='fb bad';$('#fb').textContent=st.wrong(v)}}};
+    $('#hintB').onclick=()=>{if(hintN<st.hints.length){hintN++;renderReto()}}}
+  $$('#reto [data-ch]').forEach(b=>b.onclick=()=>{const i=+b.dataset.ch;if(i===st.ok){$('#fb').className='fb good';$('#fb').textContent=st.after;beep(880,.1,'triangle',.07);$$('#reto [data-ch]').forEach(x=>x.disabled=true);setTimeout(()=>{say(st.after);nextStep(true)},1600)}else{$('#fb').className='fb bad';$('#fb').textContent=st.wrong;beep(200,.12,'sawtooth',.04)}});
+  const sb=$('#stormB');if(sb)sb.onclick=storm}
+function renderInv(){const keys=Object.keys(COMP).filter(k=>S.inv[k]>0);
+  $('#inv').innerHTML=keys.length?keys.map(k=>`<li class="item ${selItem===k?'sel':''}"><button class="pick" data-k="${k}" aria-pressed="${selItem===k}"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(COMP[k].name)}</b><small>${esc(COMP[k].desc)}</small></span></button><span class="n">×${S.inv[k]}</span></li>`).join(''):'<li class="item"><span class="tx"><small>La caja está vacía. Quita piezas o compra en la tienda.</small></span></li>';
+  $$('#inv [data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(tool!=='montar')setTool('montar');selItem=selItem===k?null:k;renderInv();updateMarkers();$('#hint').textContent=baseHint();if(selItem&&innerWidth<900)$('#stage').scrollIntoView({behavior:'smooth',block:'start'})});
+  const unlocked=k=>{const u=COMP[k].unlock;return !u||u==='free'&&S.reto>=RETOS.length||u==='r2'&&S.reto>=1};
+  const shopK=Object.keys(COMP).filter(k=>COMP[k].price);
+  $('#shop').innerHTML=shopK.map(k=>{const ok=unlocked(k);return `<li class="item"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(COMP[k].name)}</b><small>${ok?esc(COMP[k].desc):COMP[k].unlock==='r2'?'Se desbloquea en el reto 2':'Se desbloquea al terminar los retos'}</small></span><button class="price" data-buy="${k}" ${ok&&S.e>=COMP[k].price?'':'disabled'} aria-label="Comprar ${esc(COMP[k].name)} por ${COMP[k].price} de Energía">${COMP[k].price} ⚡</button></li>`}).join('');
+  $$('#shop [data-buy]').forEach(b=>b.onclick=()=>{const k=b.dataset.buy;if(S.e<COMP[k].price)return;S.e-=COMP[k].price;S.inv[k]=(S.inv[k]||0)+1;selItem=k;if(tool!=='montar')setTool('montar');beep(1040,.08,'triangle',.07);toast(`${COMP[k].name} comprada. Ahora toca su sitio en el refugio.`,'good');save();renderSide();updateMarkers();$('#hint').textContent=baseHint()})}
+function renderPass(){$('#pass').innerHTML=PASS.map((p,i)=>`<li class="${S.done[p.id]?'got':''}"><span class="seal">${S.done[p.id]?'✓':i+1}</span><span><b>${esc(p.t)}</b><small>${S.done[p.id]?'Demostrado en El Refugio · '+new Date(S.done[p.id]+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}):'Pendiente · '+esc(p.f)}</small></span></li>`).join('')}
+function renderSide(){renderReto();renderInv();renderPass();$('#energy').textContent='⚡ '+S.e}
+function renderAll(){renderSide();renderTimeBtn();renderClock()}
+
+/* tiempo: noche, día, tormenta */
+function renderClock(){const h=((S.time%24)+24)%24,hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('#clock').textContent=`${sunAt(h)>0?'☀':'☾'} ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
+function renderTimeBtn(){const st=stepObj(),b=$('#btnTime');const free=!reto();
+  if(st&&st.k==='night'){b.hidden=false;b.textContent='⏩ Pasar la noche'}else if(st&&st.k==='day'){b.hidden=false;b.textContent='⏩ Pasar el día'}else if(free){b.hidden=false;b.textContent=sunAt(S.time)>0?'⏩ Hasta la noche':'⏩ Hasta el día'}else b.hidden=true;
+  b.disabled=!!lapse}
+$('#btnTime').onclick=()=>{ac();if(lapse)return;const st=stepObj();
+  if(st&&st.k==='night'){if(!(bulbP()>3)){toast('Primero enciende la bombilla.','bad');return}S.time=20;lapse={to:30,rate:1.1,kind:'night'};say('Pasan las horas… mira la batería.')}
+  else if(st&&st.k==='day'){if(!S.placed.exterior){toast('Primero pon la placa solar en el exterior.','bad');return}const v=SOL.el.exterior;S.time=6;lapse={to:20,rate:1.3,kind:'day',max:0};say('Sale el sol. Cuanto más alto está, más carga.')}
+  else{const h=((S.time%24)+24)%24;S.time=h;lapse={to:h>=6&&h<20?20:(h<6?6:30),rate:1.2,kind:'free'}}
+  renderTimeBtn()};
+function endLapse(){const k=lapse.kind,mx=lapse.max;lapse=null;S.time=((S.time%24)+24)%24;renderTimeBtn();
+  const st=stepObj();
+  if(k==='night'&&st&&st.k==='night'){if(bulbP()>3){nextStep()}else{const p=S.placed.banco;toast('La luz se apagó antes de las 06:00.','bad');say('La batería se ha vaciado antes de que amaneciera. Te la recargo con el generador para que lo intentes otra vez.');if(p)p.wh=COMP[p.t].cap;S.time=20;save()}}
+  if(k==='day'&&st&&st.k==='day'){const p=S.placed.banco;const soc=p?p.wh/COMP[p.t].cap:0;if(soc>=0.95&&mx>0.5){nextStep()}else{toast(mx>0.5?'La batería no se ha llenado.':'La placa no ha cargado nada: revisa sus cables.','bad');say(mx>0.5?'Ha cargado algo, pero no lo bastante. ¿Hay algo gastando mucho durante el día?':'No ha entrado corriente desde la placa. Comprueba que su + va al + de la batería y su − al −.');S.time=6;save()}}
+  renderAll()}
+function storm(){flash(.9);thunder();setTimeout(()=>flash(.6),220);setTimeout(()=>{flash(.8);thunder()},900);
+  solve();const curr=c=>{const r=SOL.cab[c.id];return r?Math.abs(r.i):0};let cand=S.cables.filter(c=>curr(c)>0.005&&curr(c)<0.05);if(!cand.length)cand=S.cables.filter(c=>curr(c)>0.005);const cb=cand.length?cand[Math.floor(Math.random()*cand.length)]:S.cables[0];
+  if(cb){cb.broken=true;S.found=false}save();solve();setTimeout(()=>{nextStep();setTool('medir')},1300)}
+
+/* =====================================================================
+   10. BUCLE
+   ===================================================================== */
+let last=performance.now(),acc=0;
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(0.25,(now-last)/1000);last=now;
+  if(lapse){S.time+=dt*lapse.rate;if(lapse.kind==='day'){const e=SOL.el.exterior;if(e)lapse.max=Math.max(lapse.max,-e.i)}if(S.time>=lapse.to){S.time=lapse.to;physics(dt);endLapse()}renderClock()}
+  acc+=dt;if(acc>=0.05){physics(acc);acc=0;checkStep(0.05);updateVisuals()}
+  stepPuffs(dt);if(meshes.comps.pared&&meshes.comps.pared.userData.hub){const e=SOL.el.pared;meshes.comps.pared.userData.hub.rotation.z-=dt*(e?Math.abs(e.v)*2.2:0)}
+  // cámara
+  const t=cam.target,ce=Math.cos(cam.el);camera.position.set(t.x+cam.dist*ce*Math.sin(cam.az),t.y+cam.dist*Math.sin(cam.el),t.z+cam.dist*ce*Math.cos(cam.az));camera.lookAt(t);
+  if(cableA||probe){const id=cableA||probe;const m=meshes.terms[id];if(m)m.mesh.material.emissiveIntensity=0.7+0.5*Math.sin(now/150)}
+  renderer.render(scene,camera)}
+let lastSave=0;
+function checkStep(dt){const st=stepObj();if(!st||st.k!=='action')return;if(st.check()){holdT+=dt;if(holdT>=(st.hold||0)){nextStep()}}else holdT=0;
+  if(S.reto===0&&S.step===1){const e=SOL.el.puerta;if(ledOn()&&ledI()<0.015&&ledI()>0.002&&!checkStep.dimSaid){checkStep.dimSaid=true;say(`Funciona, pero solo pasan ${fmt(ledI()*1000,0)} mA y luce poco. ¿Puedes hacer que brille más sin pasar de 20 mA?`)}}
+  if(lapse&&performance.now()-lastSave>2000){lastSave=performance.now();save()}}
+function updateVisuals(){const h=((S.time%24)+24)%24,sun=sunAt(h);
+  const dayK=clamp(sun*1.6,0,1);skyMat.color.set(new THREE.Color('#0e1a33').lerp(new THREE.Color('#8fc2ef'),dayK));starMat.opacity=1-dayK;
+  sunL.intensity=0.9*dayK;hemi.intensity=0.32+0.55*dayK;amb.intensity=0.1+0.1*dayK;
+  scene.background.set(new THREE.Color('#0b0f14').lerp(new THREE.Color('#5b7c99'),dayK*0.8));scene.fog.color.copy(scene.background);
+  const lg=meshes.comps.puerta;if(lg&&lg.userData.lens){const I=ledOn()?ledI():0;const k=clamp(I/0.02,0,1.4);lg.userData.lens.material.emissiveIntensity=k*1.6;ledLight.intensity=k*1.4;const p=compPos('puerta');ledLight.position.set(p.x+0.35,p.y-0.15,p.z)}else ledLight.intensity=0;
+  const bg=meshes.comps.techo;if(bg&&bg.userData.lens){const P=bulbP();const k=clamp(P/5,0,1.3);bg.userData.lens.material.emissiveIntensity=k*2;bulbLight.intensity=k*2.4;const p=compPos('techo');bulbLight.position.set(p.x,p.y-0.25,p.z)}else bulbLight.intensity=0;
+  const bt=meshes.comps.banco;if(bt&&bt.userData.gauge){const p=S.placed.banco;const soc=p?(p.wh||0)/COMP[p.t].cap:0;bt.userData.gauge.scale.y=Math.max(0.02,soc);bt.userData.gauge.position.y=0.04+0.15*Math.max(0.02,soc);bt.userData.gauge.material.color.set(soc>0.5?'#6fd99a':soc>0.2?'#f2c522':'#ff6a57')}
+  const bz=SOL.el.pared;setBuzz(!!(bz&&bz.kind==='buzzer'&&Math.abs(bz.v)>6&&(Math.floor(performance.now()/350)%2===0)));
+  for(const id in meshes.cables){const cb=S.cables.find(c=>c.id===+id);const r=SOL.cab[id];const m=meshes.cables[id].m;m.material.emissiveIntensity=r&&Math.abs(r.i)>0.004&&!(cb&&cb.broken)?0.18:0}
+  renderClock()}
+function resize(){const r=cv.parentElement.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/Math.max(1,r.height);camera.fov=camera.aspect<0.8?58:42;camera.updateProjectionMatrix()}
+addEventListener('resize',resize);
+if('ResizeObserver' in window)new ResizeObserver(resize).observe($('#stage'));
+
+/* ventana modal */
+function modal(html,onMount){const m=$('#modal');$('#sheet').innerHTML=html;m.hidden=false;const close=()=>{m.hidden=true;$('#sheet').innerHTML=''};if(onMount)onMount(close);const b=$('#sheet button');if(b)setTimeout(()=>b.focus(),30);return close}
+$('#btnReset').onclick=()=>modal(`<h3>Empezar de nuevo</h3><p>Se borran tu Energía, tus piezas y los retos superados en este aparato.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rNo">Cancelar</button><button class="btn pri" id="rYes">Borrar y empezar</button></div>`,close=>{$('#rNo').onclick=close;$('#rYes').onclick=()=>{S=fresh();for(const k in pstate)delete pstate[k];save();close();rebuildAll();solve();setTool('montar');say('Bienvenido al refugio. Esta noche hay que dejarlo funcionando.');renderAll()}});
+
+/* arranque */
+function start(){if(!window.THREE){$('#loading').textContent='No se ha podido cargar el motor 3D. Comprueba la conexión y recarga.';return}
+  try{initScene()}catch(e){$('#loading').textContent='Este aparato no puede mostrar gráficos 3D.';console.error(e);return}
+  $('#loading').remove();rebuildAll();solve();setTool('montar');renderAll();
+  const st=stepObj();if(st&&st.mentor)say(st.mentor);else if(!reto())say('Modo libre. El refugio es tuyo.');
+  requestAnimationFrame(frame)}
+window.__REFUGIO={cableMid:id=>meshes.cables[id]&&meshes.cables[id].curve.getPoint(0.5),markerPos:id=>{const v=new THREE.Vector3();meshes.markers[id].getWorldPosition(v);return v},compPos,get S(){return S},solve,get SOL(){return SOL},onTap,setTool,place,COMP,termWorld,camera:()=>camera,nextStep,pick,get tool(){return tool},setMeter:m=>$(`#meter [data-m="${m}"]`).click()};
+start();
+})();
+</script>
+<script src="/comun/volver.js" defer></script>
+</body>
+</html>
