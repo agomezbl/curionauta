@@ -107,7 +107,7 @@ nav.bottom a.on{color:var(--ink);background:var(--card)}nav.bottom svg{width:24p
 @media (max-width:420px){.lvl .bar,.lvl small{display:none}.lvl{padding-right:6px}.logo{font-size:17px}.links{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
 
-/* ===== Curionauta v2: mentor, cuaderno, zona de padres ===== */
+/* ===== Curionaut v2: mentor, cuaderno, zona de padres ===== */
 .logo span{color:var(--cu)}
 .bpts{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line2);border-radius:999px;background:var(--card);font:700 14px var(--fd);white-space:nowrap}
 .bpts svg{width:18px;height:18px}

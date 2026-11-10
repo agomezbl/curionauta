@@ -1,4 +1,4 @@
-// Prueba de curionauta.com montado en dist/ (bash tools/montar.sh antes).
+// Prueba de curionaut.org montado en dist/ (bash tools/montar.sh antes).
 //   node tools/test.js            → resultados en consola y capturas en shots/
 // Recorre: la web pública ES/FR, la Estación sin cuenta (mentor, cuaderno, zona de padres,
 // idioma, mudanza) y con una cuenta simulada (Supabase falso con las mismas reglas).

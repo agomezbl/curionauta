@@ -1,6 +1,6 @@
-# Curionauta — ficha para Claude
+# Curionaut — ficha para Claude (repo `curionauta`)
 
-Web de **curionauta.com** (todavía en `https://curionauta.agomez-saturno.workers.dev`): página pública ES/FR,
+Web de **curionaut.org** (dominio comprado en Cloudflare el 10/11/2026; antes en `https://curionauta.agomez-saturno.workers.dev`): página pública ES/FR,
 la **Estación** (panel del niño con mentor y cuaderno) y los juegos, todo bajo el mismo dominio para que la Estación
 lea el progreso de cada juego desde `localStorage`.
 
@@ -38,8 +38,10 @@ PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de S
 ```
 
 ## Pendiente (nov 2026)
-- Comprar `curionauta.com` (problema de pago) → dominio en el Worker → **mudanza** del niño (una sola vez, con el dominio definitivo):
+- Conectar `curionaut.org` y `www.curionaut.org` al Worker (lo hace Alejandro) → **mudanza** del niño (una sola vez, con el dominio definitivo):
   poner `nuevaUrl` en `estacion-nil/config.js`.
+- `curionaut.com` estaba en *pending delete* el 10/11/2026 (se libera hacia el 15/11): si se consigue, que redirija a curionaut.org.
+- La marca visible es **Curionaut** (igual en ES/FR/EN); los niños son «curionautas» / «curionautes». El repo, el Worker y las claves internas siguen llamándose `curionauta`.
 - Voces de los mentores con ElevenLabs (4 voces × ES/FR) mediante GitHub Actions.
 - Escenas animadas tipo cómic (motor común + imágenes con Gemini vía GitHub Actions en repo privado `curionauta-estudio`).
 - Mentor con IA barata (al final, solo para probar en casa). Inglés al final.

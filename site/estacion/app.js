@@ -1,5 +1,5 @@
 /* =====================================================================
-   Curionauta · la Estación
+   Curionaut · la Estación
    Panel del niño: mentor y cuaderno de reflexiones, horario y agenda,
    enlaces del colegio, notas, Rutinator y los juegos con su progreso.
    Español y francés. Sin cuenta funciona en el aparato; con la cuenta
@@ -30,7 +30,7 @@ save();
 let L = S.lang;
 const LOC = () => (L === 'fr' ? 'fr-FR' : 'es-ES');
 const I = {
-  'app.name': ['Curionauta', 'Curionauta'],
+  'app.name': ['Curionaut', 'Curionaut'],
   'login.lead': ['Entra con tu cuenta y tendrás lo mismo en el móvil y en la tableta.', 'Connecte-toi avec ton compte et tu retrouveras tout sur le téléphone et la tablette.'],
   'login.mail': ['Correo', 'E-mail'], 'login.pass': ['Contraseña', 'Mot de passe'],
   'login.local': ['Usar sin cuenta', 'Utiliser sans compte'], 'login.go': ['Entrar', 'Se connecter'],
@@ -86,7 +86,7 @@ const I = {
   'set.noconn': ['Esta Estación todavía no está conectada: todo se guarda en este aparato.', 'Cette Station n’est pas encore connectée : tout est enregistré sur cet appareil.'],
   'set.sync': ['Sincronizar ahora', 'Synchroniser'], 'set.out': ['Salir de la cuenta', 'Se déconnecter'], 'set.in': ['Entrar con la cuenta', 'Se connecter'],
   'set.install': ['Instalar como app', 'Installer l’appli'], 'set.parents': ['Zona de padres', 'Espace parents'],
-  'set.about': ['Curionauta · Estación v2.0 · Sin publicidad. Lo que escribes solo lo ves tú (y tu familia, si entras con tu cuenta).', 'Curionauta · Station v2.0 · Sans publicité. Ce que tu écris, toi seul le vois (et ta famille, si tu te connectes).'],
+  'set.about': ['Curionaut · Estación v2.0 · Sin publicidad. Lo que escribes solo lo ves tú (y tu familia, si entras con tu cuenta).', 'Curionaut · Station v2.0 · Sans publicité. Ce que tu écris, toi seul le vois (et ta famille, si tu te connectes).'],
   'set.privacy': ['Privacidad', 'Confidentialité'],
   'inst.title': ['Instalar como app', 'Installer l’appli'], 'inst.ios': ['<b>iPhone o iPad (Safari):</b> botón Compartir ⬆️ → «Añadir a pantalla de inicio».', '<b>iPhone ou iPad (Safari) :</b> bouton Partager ⬆️ → « Sur l’écran d’accueil ».'],
   'inst.and': ['<b>Android (Chrome):</b> menú ⋮ → «Instalar aplicación» o «Añadir a pantalla de inicio».', '<b>Android (Chrome) :</b> menu ⋮ → « Installer l’application » ou « Ajouter à l’écran d’accueil ».'],
@@ -138,7 +138,7 @@ const I = {
   /* mudanza */
   'mv.title': ['Traer tus partidas', 'Récupérer tes parties'], 'mv.lead': ['Estas partidas vienen de la dirección antigua de la Estación. ¿Las guardamos aquí?', 'Ces parties viennent de l’ancienne adresse de la Station. On les enregistre ici ?'],
   'mv.keep': ['Ya tenías una partida más avanzada aquí: se queda la de aquí.', 'Tu avais déjà une partie plus avancée ici : on garde celle d’ici.'],
-  'mv.go': ['Guardar aquí', 'Enregistrer ici'], 'mv.done': ['Partidas traídas. ¡Bienvenido a Curionauta!', 'Parties récupérées. Bienvenue sur Curionauta !'],
+  'mv.go': ['Guardar aquí', 'Enregistrer ici'], 'mv.done': ['Partidas traídas. ¡Bienvenido a Curionaut!', 'Parties récupérées. Bienvenue sur Curionaut !'],
   'mv.bad': ['El enlace de la mudanza está incompleto. Vuelve a pulsar el botón en la Estación antigua.', 'Le lien du déménagement est incomplet. Appuie à nouveau sur le bouton dans l’ancienne Station.'],
   'mv.station': ['Notas y ajustes de la Estación', 'Notes et réglages de la Station'], 'mv.other': ['Otros datos', 'Autres données']
 };
@@ -193,7 +193,7 @@ function tick() {
 }
 
 /* =================== JUEGOS =================== */
-/* Todos los juegos viven en la misma dirección (curionauta.com/juegos/...), así que su progreso
+/* Todos los juegos viven en la misma dirección (curionaut.org/juegos/...), así que su progreso
    está en este mismo navegador y la Estación lo puede leer sin pedir nada a nadie. */
 const read = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
 const rankOf = (R, xp) => { let r = R[0][1]; R.forEach(([x, n]) => { if ((xp || 0) >= x) r = n; }); return r; };
@@ -540,7 +540,7 @@ function reportText(R) {
   if (R.rut) L1.push('', 'Rutinator', '• ' + t('r.rut', { p: R.rut.pct, ok: R.rut.ok, n: R.rut.exp, c: R.rut.earned }));
   if (R.due.length) L1.push('', t('r.due'), ...R.due.map(n => '• ' + n.title));
   if (R.talk) L1.push('', t('r.talk'), '«' + R.talk.pregunta + '»');
-  L1.push('', '— Curionauta');
+  L1.push('', '— Curionaut');
   return L1.join('\n');
 }
 let reportOffset = 0;
@@ -562,7 +562,7 @@ function bindReport() {
   const pv = $('#rPrev'); if (pv) pv.onclick = () => { reportOffset--; showParent('inf'); };
   const nx = $('#rNext'); if (nx) nx.onclick = () => { if (reportOffset < 0) { reportOffset++; showParent('inf'); } };
   const cp = $('#rCopy'); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(R()); toast(t('r.copied')); } catch (e) { prompt(t('r.copy'), R()); } };
-  const sh = $('#rShare'); if (sh) sh.onclick = () => navigator.share({ title: 'Curionauta', text: R() }).catch(() => {});
+  const sh = $('#rShare'); if (sh) sh.onclick = () => navigator.share({ title: 'Curionaut', text: R() }).catch(() => {});
 }
 function showParent(tab) {
   const pend = S.refl.filter(r => r.estado === 'pendiente'), done = S.refl.filter(r => r.estado !== 'pendiente').slice(0, 40);
@@ -731,7 +731,7 @@ async function pullRutinator() {
   if (sch) { const par = (st && st.week_parity) || 'todas'; out.blocks = sch.filter(b => !b.parity || b.parity === 'todas' || par === 'todas' || b.parity === par).map(b => ({ s: b.start_min, e: b.end_min, t: b.subject || b.label || b.type, room: b.room || '', kind: b.type })); }
   out.at = Date.now(); S.cache.rut = out; save(); return out;
 }
-/* Rutinator v3 vive en la misma dirección (curionauta.com/rutinator/): se lee de este aparato.
+/* Rutinator v3 vive en la misma dirección (curionaut.org/rutinator/): se lee de este aparato.
    Misma lógica que su núcleo (tasks.js, schedule.js, ledger.js) para que los números coincidan. */
 const RUT3 = 'rutineitor.v3.estado';
 const minOf = h => { const m = /^(\d{1,2}):(\d{2})$/.exec(h || ''); return m ? (+m[1]) * 60 + (+m[2]) : null; };

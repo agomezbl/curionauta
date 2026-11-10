@@ -1,4 +1,4 @@
-/* Curionauta · pestaña «Estación» en todos los juegos.
+/* Curionaut · pestaña «Estación» en todos los juegos.
    Se añade al montar la web (tools/montar.sh), sin tocar el código de cada juego.
    Es una pestaña pequeña pegada al borde izquierdo: no tapa el juego y lleva a la Estación,
    donde el mentor comenta lo que se acaba de hacer. Va dentro de un Shadow DOM para que

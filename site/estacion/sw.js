@@ -1,4 +1,4 @@
-/* Curionauta · Estación: funciona sin conexión. Guarda la app y la librería de Supabase;
+/* Curionaut · Estación: funciona sin conexión. Guarda la app y la librería de Supabase;
    los datos van siempre por la red. La versión la cambia tools/montar.sh en cada publicación. */
 const V = 'curionauta-estacion-__V__';
 const SHELL = ['./', 'index.html', 'estacion.css', 'app.js', 'mentores.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',

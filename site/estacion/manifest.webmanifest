@@ -1,6 +1,6 @@
 {
-  "name": "Curionauta · Estación",
-  "short_name": "Curionauta",
+  "name": "Curionaut · Estación",
+  "short_name": "Curionaut",
   "description": "Tu estación de juegos para aprender, con un mentor que te acompaña.",
   "id": "/estacion/",
   "start_url": "./",

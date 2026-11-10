@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Genera la web pública de Curionauta en español y en francés a partir de una sola plantilla.
+"""Genera la web pública de Curionaut en español y en francés a partir de una sola plantilla.
 
     python3 tools/paginas.py
 
@@ -10,21 +10,21 @@ Los textos viven aquí; la Estación tiene los suyos en site/estacion/.
 import html, os
 
 RAIZ = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'site')
-CORREO = 'contacto@curionauta.com'
+CORREO = 'contacto@curionaut.org'
 
 E = lambda s: html.escape(s, quote=True)
 
 TXT = {
  'es': {
   'lang': 'es', 'otro': 'fr', 'otroNombre': 'Français', 'otroUrl': '/fr/',
-  'title': 'Curionauta · juegos de ciencia con un mentor que pregunta por qué',
+  'title': 'Curionaut · juegos de ciencia con un mentor que pregunta por qué',
   'desc': 'Juegos de electricidad, geometría y filosofía para chicos y chicas de 8 a 16 años, con un mentor que hace una sola pregunta al terminar y una familia que lee la respuesta. Sin anuncios.',
   'nav': [('#como', 'Cómo funciona'), ('#mundos', 'Los juegos'), ('#mentores', 'Los mentores'), ('#familias', 'Para familias')],
   'entrar': 'Entrar en la Estación',
   'h1': 'Aprender ciencia jugando, y pararse a pensar en lo aprendido.',
-  'lead': 'Curionauta reúne juegos de electricidad, geometría y filosofía en una sola estación. Al volver de cada misión, un mentor hace una única pregunta. La familia lee la respuesta y la valora.',
+  'lead': 'Curionaut reúne juegos de electricidad, geometría y filosofía en una sola estación. Al volver de cada misión, un mentor hace una única pregunta. La familia lee la respuesta y la valora.',
   'cta2': 'Ver los juegos',
-  'mapa': 'Mapa de Curionauta: la Estación en el centro y cuatro mundos alrededor',
+  'mapa': 'Mapa de Curionaut: la Estación en el centro y cuatro mundos alrededor',
   'como_h': 'Una misión, una pregunta, una conversación',
   'como_p': 'Los juegos enseñan. Lo que se queda es lo que uno es capaz de explicar con sus palabras.',
   'pasos': [
@@ -56,18 +56,18 @@ TXT = {
   'cta_h': 'La Estación ya está abierta',
   'cta_p': 'Se usa desde el navegador y se instala como una app. Funciona sin cuenta en un solo aparato, o con la cuenta familiar en todos.',
   'privacidad': 'Privacidad', 'privUrl': '/legal/privacidad.html', 'contacto': 'Contacto',
-  'pie': 'Curionauta es un proyecto familiar e independiente.',
+  'pie': 'Curionaut es un proyecto familiar e independiente.',
  },
  'fr': {
   'lang': 'fr', 'otro': 'es', 'otroNombre': 'Español', 'otroUrl': '/',
-  'title': 'Curionauta · des jeux de sciences avec un mentor qui demande pourquoi',
+  'title': 'Curionaut · des jeux de sciences avec un mentor qui demande pourquoi',
   'desc': 'Des jeux d’électricité, de géométrie et de philosophie pour les 8–16 ans, avec un mentor qui pose une seule question à la fin et une famille qui lit la réponse. Sans publicité.',
   'nav': [('#como', 'Comment ça marche'), ('#mundos', 'Les jeux'), ('#mentores', 'Les mentors'), ('#familias', 'Pour les familles')],
   'entrar': 'Entrer dans la Station',
   'h1': 'Apprendre les sciences en jouant, et prendre le temps de réfléchir à ce qu’on a appris.',
-  'lead': 'Curionauta réunit des jeux d’électricité, de géométrie et de philosophie dans une seule station. Au retour de chaque mission, un mentor pose une seule question. La famille lit la réponse et la valide.',
+  'lead': 'Curionaut réunit des jeux d’électricité, de géométrie et de philosophie dans une seule station. Au retour de chaque mission, un mentor pose une seule question. La famille lit la réponse et la valide.',
   'cta2': 'Voir les jeux',
-  'mapa': 'Carte de Curionauta : la Station au centre et quatre mondes autour',
+  'mapa': 'Carte de Curionaut : la Station au centre et quatre mondes autour',
   'como_h': 'Une mission, une question, une conversation',
   'como_p': 'Les jeux enseignent. Ce qui reste, c’est ce qu’on est capable d’expliquer avec ses propres mots.',
   'pasos': [
@@ -99,7 +99,7 @@ TXT = {
   'cta_h': 'La Station est déjà ouverte',
   'cta_p': 'Elle s’utilise depuis le navigateur et s’installe comme une appli. Elle fonctionne sans compte sur un seul appareil, ou avec le compte familial sur tous.',
   'privacidad': 'Confidentialité', 'privUrl': '/fr/confidentialite.html', 'contacto': 'Contact',
-  'pie': 'Curionauta est un projet familial et indépendant.',
+  'pie': 'Curionaut est un projet familial et indépendant.',
  }
 }
 
@@ -214,10 +214,10 @@ def cabecera(t, canon, alt_es, alt_fr, titulo=None, desc=None):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{E(titulo or t['title'])}</title>
 <meta name="description" content="{E(desc or t['desc'])}">
-<link rel="canonical" href="https://curionauta.com{canon}">
-<link rel="alternate" hreflang="es" href="https://curionauta.com{alt_es}">
-<link rel="alternate" hreflang="fr" href="https://curionauta.com{alt_fr}">
-<link rel="alternate" hreflang="x-default" href="https://curionauta.com{alt_es}">
+<link rel="canonical" href="https://curionaut.org{canon}">
+<link rel="alternate" hreflang="es" href="https://curionaut.org{alt_es}">
+<link rel="alternate" hreflang="fr" href="https://curionaut.org{alt_fr}">
+<link rel="alternate" hreflang="x-default" href="https://curionaut.org{alt_es}">
 <meta property="og:title" content="{E(titulo or t['title'])}">
 <meta property="og:description" content="{E(desc or t['desc'])}">
 <meta property="og:type" content="website">
@@ -229,7 +229,7 @@ def cabecera(t, canon, alt_es, alt_fr, titulo=None, desc=None):
 <body>
 <a class="salto" href="#contenido">{'Saltar al contenido' if t['lang']=='es' else 'Aller au contenu'}</a>
 <header><div class="ancho barra">
-  <a class="marca" href="{'/' if t['lang']=='es' else '/fr/'}">{LOGO}Curionauta</a>
+  <a class="marca" href="{'/' if t['lang']=='es' else '/fr/'}">{LOGO}Curionaut</a>
   <nav aria-label="{'Secciones' if t['lang']=='es' else 'Sections'}">{''.join(f'<a href="{"/" if t["lang"]=="es" else "/fr/"}{h}">{E(x)}</a>' for h,x in t['nav'])}</nav>
   <a class="idioma" href="{alt_fr if t['lang']=='es' else alt_es}" hreflang="{t['otro']}" lang="{t['otro']}">{t['otroNombre']}</a>
   <a class="boton" href="/estacion/">{E(t['entrar'])}</a>
@@ -237,7 +237,7 @@ def cabecera(t, canon, alt_es, alt_fr, titulo=None, desc=None):
 '''
 
 def pie(t):
-    return f'''<footer><div class="ancho"><span>© 2026 Curionauta. {E(t['pie'])}</span>
+    return f'''<footer><div class="ancho"><span>© 2026 Curionaut. {E(t['pie'])}</span>
 <span class="der"><a href="{t['privUrl']}">{E(t['privacidad'])}</a><a href="mailto:{CORREO}">{E(t['contacto'])}</a></span></div></footer>
 </body>
 </html>
@@ -269,8 +269,8 @@ def portada(lang):
 ''' + pie(t)
 
 PRIV = {
- 'es': ('Privacidad', 'Qué datos guarda Curionauta, dónde y para qué.', [
-  ('En pocas palabras', ['Curionauta no tiene publicidad, no vende datos y no usa herramientas de seguimiento ni de estadísticas. Solo guarda lo necesario para que la Estación y los juegos funcionen, y la familia puede pedir que se borre todo.']),
+ 'es': ('Privacidad', 'Qué datos guarda Curionaut, dónde y para qué.', [
+  ('En pocas palabras', ['Curionaut no tiene publicidad, no vende datos y no usa herramientas de seguimiento ni de estadísticas. Solo guarda lo necesario para que la Estación y los juegos funcionen, y la familia puede pedir que se borre todo.']),
   ('Sin cuenta', ['Los juegos y la Estación guardan el progreso, las notas y las reflexiones <strong>solo en el navegador del aparato</strong> (almacenamiento local). No se envía nada a ningún servidor. Borrar los datos del navegador lo borra todo.']),
   ('Con la cuenta familiar', ['Al entrar con la cuenta de la familia se guardan en un servidor de <strong>Supabase situado en la Unión Europea (Irlanda)</strong>:',
      '<ul><li>el correo y la contraseña cifrada de la cuenta;</li><li>las notas, los recordatorios y los enlaces del colegio que se escriban en la Estación;</li><li>un resumen del progreso de cada juego (puntos, misiones, medallas);</li><li>las reflexiones escritas en el cuaderno de vuelo, con la valoración y la nota del adulto.</li></ul>',
@@ -281,8 +281,8 @@ PRIV = {
   ('Borrar o descargar los datos', [f'Escribe a <a href="mailto:{CORREO}">{CORREO}</a> desde el correo de la cuenta familiar y se te enviará una copia o se borrará todo en un plazo máximo de 30 días.']),
   ('Cambios', ['Si esta página cambia, la fecha de abajo lo indicará. Última actualización: noviembre de 2026.']),
  ]),
- 'fr': ('Confidentialité', 'Quelles données Curionauta enregistre, où et pourquoi.', [
-  ('En bref', ['Curionauta n’a pas de publicité, ne vend aucune donnée et n’utilise aucun outil de suivi ni de statistiques. Il n’enregistre que le nécessaire au fonctionnement de la Station et des jeux, et la famille peut demander que tout soit supprimé.']),
+ 'fr': ('Confidentialité', 'Quelles données Curionaut enregistre, où et pourquoi.', [
+  ('En bref', ['Curionaut n’a pas de publicité, ne vend aucune donnée et n’utilise aucun outil de suivi ni de statistiques. Il n’enregistre que le nécessaire au fonctionnement de la Station et des jeux, et la famille peut demander que tout soit supprimé.']),
   ('Sans compte', ['Les jeux et la Station enregistrent la progression, les notes et les réflexions <strong>uniquement dans le navigateur de l’appareil</strong> (stockage local). Rien n’est envoyé à un serveur. Effacer les données du navigateur efface tout.']),
   ('Avec le compte familial', ['En se connectant avec le compte de la famille, sont enregistrés sur un serveur <strong>Supabase situé dans l’Union européenne (Irlande)</strong> :',
      '<ul><li>l’e-mail et le mot de passe chiffré du compte ;</li><li>les notes, rappels et liens du collège écrits dans la Station ;</li><li>un résumé de la progression de chaque jeu (points, missions, médailles) ;</li><li>les réflexions écrites dans le carnet de bord, avec la validation et la note de l’adulte.</li></ul>',
@@ -298,7 +298,7 @@ def privacidad(lang):
     t = TXT[lang]; titulo, desc, secs = PRIV[lang]
     cuerpo = ''.join(f'<h2>{E(h)}</h2>' + ''.join(p if p.startswith('<ul') else f'<p>{p}</p>' for p in ps) for h, ps in secs)
     canon = '/legal/privacidad.html' if lang == 'es' else '/fr/confidentialite.html'
-    return cabecera(t, canon, '/legal/privacidad.html', '/fr/confidentialite.html', f'{titulo} · Curionauta', desc) + \
+    return cabecera(t, canon, '/legal/privacidad.html', '/fr/confidentialite.html', f'{titulo} · Curionaut', desc) + \
         f'<main id="contenido" class="ancho"><article class="legal"><h1>{E(titulo)}</h1><p>{E(desc)}</p>{cuerpo}</article></main>\n' + pie(t)
 
 def escribe(ruta, texto):
@@ -312,7 +312,7 @@ if __name__ == '__main__':
     escribe('legal/privacidad.html', privacidad('es'))
     escribe('fr/confidentialite.html', privacidad('fr'))
     t = TXT['es']
-    escribe('404.html', cabecera(t, '/404.html', '/', '/fr/', 'Página no encontrada · Curionauta', 'Esta página no existe.') +
+    escribe('404.html', cabecera(t, '/404.html', '/', '/fr/', 'Página no encontrada · Curionaut', 'Esta página no existe.') +
         '<main id="contenido" class="ancho"><article class="legal"><h1>Esta página no existe</h1>'
         '<p>Puede que el enlace esté mal escrito o que la página se haya movido.</p>'
         '<p lang="fr">Cette page n’existe pas. Le lien est peut-être mal écrit ou la page a été déplacée.</p>'

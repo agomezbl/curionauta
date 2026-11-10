@@ -6,7 +6,7 @@ Guía corta para ir ordenado, gastar menos y no perder nada. Para tenerla a mano
 
 | Proyecto | Repositorio | Cuándo abrir conversación nueva |
 |---|---|---|
-| Curionauta (web, Estación, mentores, voces) | `curionauta` | Publicación, Estación, dominio, voces |
+| Curionaut (web, Estación, mentores, voces) | `curionauta` | Publicación, Estación, dominio, voces |
 | Chrono-Ohm | `chrono-ohm` | Capítulos, electromagnetismo |
 | Expedición Pitágoras | `expedicion-pitagoras` | Cámaras nuevas, Tales/trigonometría |
 | PhiloQuest | `PHYLOQUEST` | Capítulos VI–X |
@@ -52,12 +52,12 @@ conversación nueva retomo el hilo en segundos.
 1. Pruebas automáticas en verde y revisión en navegador (PC y móvil). De esto me encargo yo.
 2. **Nil lo prueba** y le preguntas: ¿qué te ha aburrido?, ¿qué no has entendido?, ¿qué repetirías?
 3. Apuntar la versión (v1.x beta) y qué cambia, en el historial del juego.
-4. Publicar el juego y luego **volver a publicar Curionauta** (subir un cambio a su repositorio) para que la web lo recoja.
+4. Publicar el juego y luego **volver a publicar Curionaut** (subir un cambio a su repositorio) para que la web lo recoja.
 
 ## 6. Orden de prioridades (noviembre 2026)
 
 1. Terminar lo empezado: **PhiloQuest VI–X**; pruebas con 2–3 familias amigas de Chrono-Ohm y Pitágoras.
-2. Dominio `curionauta.com` → mudanza de Nil.
+2. Dominio `curionaut.org` → mudanza de Nil.
 3. Voces de los mentores (ElevenLabs) y escenas animadas (Gemini), las dos mediante GitHub.
 4. Juego nuevo: electromagnetismo, química o Tales/trigonometría (que vote Nil).
 5. Mentor con IA e inglés, al final.

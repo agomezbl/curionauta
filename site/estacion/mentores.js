@@ -1,5 +1,5 @@
 /* =====================================================================
-   Curionauta · los cuatro mentores y su cuaderno de preguntas
+   Curionaut · los cuatro mentores y su cuaderno de preguntas
    ---------------------------------------------------------------------
    Todo el texto vive aquí, en español y en francés, para poder revisarlo,
    traducirlo y grabarlo con voz sin tocar la lógica de la Estación.

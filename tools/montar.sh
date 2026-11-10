@@ -1,5 +1,5 @@
 #!/bin/bash
-# Monta la web completa de curionauta.com en dist/:
+# Monta la web completa de curionaut.org en dist/:
 #   site/            → la web pública, la Estación, los textos legales y los tipos de letra
 #   juegos de GitHub → dist/juegos/<nombre>/ (se descargan en cada publicación: una sola fuente)
 # Cloudflare Pages lo ejecuta en cada publicación (orden de compilación: bash tools/montar.sh,

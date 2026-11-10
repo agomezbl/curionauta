@@ -1,14 +1,14 @@
-# Curionauta
+# Curionaut
 
-La web de **curionauta.com**: la página pública para familias (español y francés), la **Estación**
+La web de **curionaut.org**: la página pública para familias (español y francés), la **Estación**
 (el panel del niño, con su mentor y su cuaderno de vuelo) y los juegos, todo bajo la misma dirección.
 
 ```
-curionauta.com/                   web pública (ES)        · /fr/  la misma en francés
-curionauta.com/estacion/          la Estación (app instalable, funciona sin conexión)
-curionauta.com/juegos/chrono-ohm/ · /juegos/pitagoras/ · /juegos/philoquest/ · /juegos/umbral/
-curionauta.com/rutinator/        Rutinator v3 (la Estación lee sus tareas, créditos, hucha y horario del aparato)
-curionauta.com/legal/privacidad.html · /fr/confidentialite.html
+curionaut.org/                   web pública (ES)        · /fr/  la misma en francés
+curionaut.org/estacion/          la Estación (app instalable, funciona sin conexión)
+curionaut.org/juegos/chrono-ohm/ · /juegos/pitagoras/ · /juegos/philoquest/ · /juegos/umbral/
+curionaut.org/rutinator/        Rutinator v3 (la Estación lee sus tareas, créditos, hucha y horario del aparato)
+curionaut.org/legal/privacidad.html · /fr/confidentialite.html
 ```
 
 Que todo cuelgue de la **misma dirección** es lo que permite a la Estación leer el progreso de cada juego
@@ -73,4 +73,4 @@ AXE=/ruta/axe-core/axe.min.js node tools/test-accesibilidad.js     # WCAG 2.1 AA
 PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh
 ```
 
-© 2026 Curionauta. Todos los derechos reservados.
+© 2026 Curionaut. Todos los derechos reservados.

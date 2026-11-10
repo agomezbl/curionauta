@@ -1,13 +1,11 @@
-# Publicar curionauta.com — paso a paso
+# Publicar curionaut.org — paso a paso
 
 Para hacerlo una sola vez. Unos 20 minutos. No hace falta saber programar.
 
 ## 1. Dominio (Cloudflare)
 
-1. Entra en **dash.cloudflare.com** con tu cuenta.
-2. Menú de la izquierda → **Domain Registration → Register Domains**.
-3. Escribe `curionauta.com` → si está libre, **Purchase**. Paga con tu tarjeta (lo haces tú).
-4. Al terminar, el dominio aparece en **Websites / Domains**. Cloudflare ya lo gestiona: no hay que tocar DNS.
+Hecho el 10/11/2026: `curionaut.org` comprado en Cloudflare, con renovación automática.
+Cloudflare ya lo gestiona: no hay que tocar DNS.
 
 ## 2. Repositorio (GitHub)
 
@@ -24,28 +22,28 @@ Para hacerlo una sola vez. Unos 20 minutos. No hace falta saber programar.
    Se ve en el Worker → pestaña **Deployments**.
 3. Dirección gratuita: `https://curionauta.agomez-saturno.workers.dev` (Settings → Domains & Routes →
    *Production* encendido; *Preview* apagado).
-4. Cuando tengas el dominio: Settings → **Domains & Routes** → **Add → Custom domain** → `curionauta.com`,
-   y otra vez con `www.curionauta.com`. En unos minutos funciona con candado.
+4. Cuando tengas el dominio: Settings → **Domains & Routes** → **Add → Custom domain** → `curionaut.org`,
+   y otra vez con `www.curionaut.org`. En unos minutos funciona con candado.
 
 ## 4. Correo de contacto (gratis, opcional pero recomendado)
 
-1. Cloudflare → tu dominio `curionauta.com` → **Email → Email Routing → Get started / Enable**.
+1. Cloudflare → tu dominio `curionaut.org` → **Email → Email Routing → Get started / Enable**.
 2. **Create address**: `contacto` → destino: tu correo **personal** (no el del trabajo).
 3. Cloudflare te manda un correo para verificar el destino: ábrelo y confirma.
-4. Desde ese momento, lo que llegue a `contacto@curionauta.com` te llega a tu correo.
+4. Desde ese momento, lo que llegue a `contacto@curionaut.org` te llega a tu correo.
 
 ## 5. La base de datos (Supabase)
 
 1. supabase.com → el proyecto de siempre → **SQL Editor → New query**.
 2. Abre `supabase/0032_cuaderno.sql` del repositorio (botón *Raw* en GitHub), copia todo y pégalo.
 3. **Run**. Debe salir una fila con dos `true`.
-4. Supabase → **Authentication → URL Configuration** → en *Redirect URLs* añade `https://curionauta.com/**`.
+4. Supabase → **Authentication → URL Configuration** → en *Redirect URLs* añade `https://curionaut.org/**`.
 
 ## 6. La mudanza de Nil
 
-Cuando `https://curionauta.com/estacion/` funcione, Claude activa el botón «Llevar mis partidas» en la Estación antigua. Después, en el móvil y en la tableta de Nil:
+Cuando `https://curionaut.org/estacion/` funcione, Claude activa el botón «Llevar mis partidas» en la Estación antigua. Después, en el móvil y en la tableta de Nil:
 
-1. Abre la **Estación antigua** (la de siempre) → aparece el recuadro *«La Estación se muda a Curionauta»* → **Llevar mis partidas**.
+1. Abre la **Estación antigua** (la de siempre) → aparece el recuadro *«La Estación se muda a Curionaut»* → **Llevar mis partidas**.
 2. Se abre la nueva Estación → **Guardar aquí**. Partidas, notas, enlaces de Pronote y Rutinator viajan juntos.
 3. En la nueva Estación: ⚙️ → **Instalar como app**.
 4. Borra de la pantalla de inicio los iconos antiguos (Estación, Chrono-Ohm, Pitágoras, Rutinator) para no seguir usándolos por error.
@@ -54,4 +52,4 @@ Repite en cada aparato: la mudanza lleva lo que hay en *ese* aparato.
 
 ## Cuando algo cambie
 
-Claude publica en GitHub y Cloudflare vuelve a montar la web solo. Si se ha cambiado un juego (por ejemplo Chrono-Ohm), hay que volver a desplegar Curionauta: Cloudflare → proyecto → **Deployments → Retry deployment** (o lo hace Claude con un cambio cualquiera).
+Claude publica en GitHub y Cloudflare vuelve a montar la web solo. Si se ha cambiado un juego (por ejemplo Chrono-Ohm), hay que volver a desplegar Curionaut: Cloudflare → proyecto → **Deployments → Retry deployment** (o lo hace Claude con un cambio cualquiera).
