@@ -1,5 +1,5 @@
-// Mudanza de verdad entre dos direcciones distintas: la Estación antigua (estacion-nil, puerto 8778)
-// manda las partidas a la nueva (dist/, puerto 8777). Uso: node tools/test-mudanza.js /ruta/a/estacion-nil
+// La Estación antigua (estacion-nil, puerto 8778) avisa de que la Estación vive ahora en la nueva (dist/, puerto 8777)
+// y su botón lleva allí sin llevar datos: en curionaut.org se empieza de cero (decidido el 10/11/2026). Uso: node tools/test-mudanza.js /ruta/a/estacion-nil
 const { chromium } = require('playwright'); const path = require('path'), fs = require('fs'), http = require('http');
 const OLD = process.argv[2] || path.join(__dirname, '..', '..', 'estacion-nil'), NEW = path.join(__dirname, '..', 'dist');
 const serve = (root, port) => http.createServer((q, r) => { let f = path.join(root, decodeURIComponent(q.url.split('?')[0])); try { if (fs.statSync(f).isDirectory()) f = path.join(f, 'index.html'); } catch (e) {}
@@ -17,8 +17,7 @@ const a = serve(OLD, 8778), b = serve(NEW, 8777);
   await p.reload(); await p.waitForTimeout(500); await p.click('#lgLocal').catch(() => {}); await p.waitForTimeout(300);
   const visible = await p.isVisible('#mudanza'); await p.screenshot({ path: path.join(__dirname, '..', 'shots', 'mudanza-antigua.png') });
   await p.click('#mvGo'); await p.waitForURL('http://localhost:8777/estacion/**'); await p.waitForTimeout(800);
-  await p.click('#mvGo'); await p.waitForTimeout(400);
-  const r = await p.evaluate(() => ({ chrono: JSON.parse(localStorage.getItem('chrono-ohm-v1')).xp, philo: !!localStorage.getItem('philoquest.v3.store'), auth: localStorage.getItem('estacion-nil-auth'), games: document.querySelector('#games').textContent.replace(/\s+/g, ' ').slice(0, 120) }));
-  console.log({ visible, ...r, errs }); const ok = visible && r.chrono === 2222 && r.philo && !r.auth && !errs.length;
-  console.log(ok ? '✓ mudanza entre direcciones distintas' : '✗ mudanza'); a.close(); b.close(); await br.close(); process.exit(ok ? 0 : 1);
+  const r = await p.evaluate(() => ({ url: location.href, chrono: localStorage.getItem('chrono-ohm-v1'), auth: localStorage.getItem('estacion-nil-auth'), estacion: !!document.querySelector('#games') }));
+  console.log({ visible, ...r, errs }); const ok = visible && !r.url.includes('#') && !r.chrono && !r.auth && r.estacion && !errs.length;
+  console.log(ok ? '✓ el aviso de la Estación antigua lleva a la nueva, sin llevar datos (se empieza de cero)' : '✗ aviso de la Estación antigua'); a.close(); b.close(); await br.close(); process.exit(ok ? 0 : 1);
 })();

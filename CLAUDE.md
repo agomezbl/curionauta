@@ -32,14 +32,15 @@ Un juego nuevo necesita: entrada en `tools/montar.sh`, lector en `GAMES` de `app
 ## Pruebas (deben pasar antes de subir)
 ```
 LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 79 comprobaciones, navegador real
-node tools/test-mudanza.js ../estacion-nil                         # mudanza desde la Estación antigua
+node tools/test-mudanza.js ../estacion-nil                         # aviso de la Estación antigua → la nueva
 AXE=/ruta/axe.min.js node tools/test-accesibilidad.js              # WCAG 2.1 AA
 PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de Supabase sobre Postgres local
 ```
 
 ## Pendiente (nov 2026)
-- `curionaut.org` conectado al Worker el 10/11/2026. Mudanza **activada** ese día (`nuevaUrl` en `estacion-nil/config.js`):
-  falta que Nil la haga en cada aparato (móvil y tableta). Después se puede retirar la Estación antigua.
+- `curionaut.org` conectado al Worker el 10/11/2026. **Sin mudanza de datos**: Alejandro decidió empezar de cero en curionaut.org.
+  La Estación antigua (`estacion-nil`) solo muestra un aviso con un botón que lleva a la nueva (`nuevaUrl` en su `config.js`).
+  El código que recibe `#mudanza=` en `app.js` se queda, pero ya no se usa.
 - `curionaut.com` estaba en *pending delete* el 10/11/2026 (se libera hacia el 15/11): si se consigue, que redirija a curionaut.org.
 - La marca visible es **Curionaut** (igual en ES/FR/EN); los niños son «curionautas» / «curionautes». El repo, el Worker y las claves internas siguen llamándose `curionauta`.
 - Voces de los mentores con ElevenLabs (4 voces × ES/FR) mediante GitHub Actions.
