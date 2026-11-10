@@ -42,6 +42,9 @@ PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de S
   La Estación antigua (`estacion-nil`) solo muestra un aviso con un botón que lleva a la nueva (`nuevaUrl` en su `config.js`).
   El código que recibe `#mudanza=` en `app.js` se queda, pero ya no se usa.
 - `curionaut.com` estaba en *pending delete* el 10/11/2026 (se libera hacia el 15/11): si se consigue, que redirija a curionaut.org.
+- **Nil usa Rutinator v2** (https://rutinator-v2.vercel.app/, Supabase `rkunylxrbnndijyvisfj`), no la v3: hay que cuidarla.
+  La tarjeta de Rutinator de la Estación lee la v2 de Supabase cuando Nil entra con su cuenta, y «Abrir Rutinator» lleva a la v2.
+  No tocar sus tablas (`tasks`, `task_status`, `ledger_entries`, `calendar_events`, `schedule_blocks`, `settings`) al hacer la base multifamilia.
 - La marca visible es **Curionaut** (igual en ES/FR/EN); los niños son «curionautas» / «curionautes». El repo, el Worker y las claves internas siguen llamándose `curionauta`.
 - Voces de los mentores con ElevenLabs (4 voces × ES/FR) mediante GitHub Actions.
 - Escenas animadas tipo cómic (motor común + imágenes con Gemini vía GitHub Actions en repo privado `curionauta-estudio`).

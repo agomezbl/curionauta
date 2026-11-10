@@ -771,7 +771,8 @@ function renderHoy() {
 }
 function ring(done, total) { const p = total ? done / total : 0, C = 2 * Math.PI * 26; return `<svg class="ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#26324f" stroke-width="8"/><circle cx="32" cy="32" r="26" fill="none" stroke="${p >= 1 ? '#4fd18b' : '#f2a65a'}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${(C * p).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 32 32)"/></svg>`; }
 function renderRut() {
-  const r = S.cache.rut; const open = CFG.rutinatorUrl ? `<a class="btn pri" style="width:100%;margin-top:12px" href="${esc(CFG.rutinatorUrl)}">${esc(t('rut.open'))}</a>` : '';
+  const r = S.cache.rut; const href = r && r.v3 ? '../rutinator/' : CFG.rutinatorUrl;   // v3 del aparato, o la v2 de la configuración
+  const open = href ? `<a class="btn pri" style="width:100%;margin-top:12px" href="${esc(href)}">${esc(t('rut.open'))}</a>` : '';
   if (!cloudOn() && !(r && r.v3)) { $('#rutBox').innerHTML = `<p class="empty">${esc(t('rut.none'))}</p>${open}`; return; }
   if (!r) { $('#rutBox').innerHTML = '<div class="sk"></div>'; return; }
   const k = r.tasks || { done: 0, total: 0 };
