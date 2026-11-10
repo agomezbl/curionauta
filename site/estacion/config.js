@@ -5,7 +5,6 @@
 window.ESTACION = {
   supabaseUrl: 'https://rkunylxrbnndijyvisfj.supabase.co',
   supabaseKey: 'sb_publishable_KhfVpiIf3dmRJ7C9ZJcwEw_ypS98OM7',
-  // Nil usa Rutinator v2 (Vercel + Supabase): el botón «Abrir Rutinator» lleva allí.
-  // Si en el aparato hay datos de Rutinator v3 (/rutinator/), la tarjeta los muestra y el botón abre la v3.
-  rutinatorUrl: 'https://rutinator-v2.vercel.app/'
+  // Rutinator v3, en la misma dirección: la Estación lee sus datos del aparato y el botón lo abre.
+  rutinatorUrl: '../rutinator/'
 };
