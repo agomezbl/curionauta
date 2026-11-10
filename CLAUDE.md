@@ -38,8 +38,8 @@ PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de S
 ```
 
 ## Pendiente (nov 2026)
-- Conectar `curionaut.org` y `www.curionaut.org` al Worker (lo hace Alejandro) → **mudanza** del niño (una sola vez, con el dominio definitivo):
-  poner `nuevaUrl` en `estacion-nil/config.js`.
+- `curionaut.org` conectado al Worker el 10/11/2026. Mudanza **activada** ese día (`nuevaUrl` en `estacion-nil/config.js`):
+  falta que Nil la haga en cada aparato (móvil y tableta). Después se puede retirar la Estación antigua.
 - `curionaut.com` estaba en *pending delete* el 10/11/2026 (se libera hacia el 15/11): si se consigue, que redirija a curionaut.org.
 - La marca visible es **Curionaut** (igual en ES/FR/EN); los niños son «curionautas» / «curionautes». El repo, el Worker y las claves internas siguen llamándose `curionauta`.
 - Voces de los mentores con ElevenLabs (4 voces × ES/FR) mediante GitHub Actions.
