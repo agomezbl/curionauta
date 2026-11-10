@@ -20,7 +20,7 @@ for par in $JUEGOS; do
   elif [ -n "${LOCAL:-}" ] && [ -d "$LOCAL/$(echo "$repo" | tr A-Z a-z)" ]; then src="$LOCAL/$(echo "$repo" | tr A-Z a-z)"
   else src=$(mktemp -d); git clone -q --depth 1 "https://github.com/agomezbl/$repo.git" "$src"; fi
   mkdir -p "$dest"
-  (cd "$src" && git ls-files) | grep -Ev '^(src|tools|i18n|lab|tests|shots|tienda|licenses-src|node_modules)/|(^|/)(package(-lock)?\.json|[^/]*\.py|[^/]*\.md|\.gitignore|\.nojekyll)$' \
+  (cd "$src" && git ls-files) | grep -Ev '^(src|tools|i18n|lab|tests|shots|tienda|licenses-src|node_modules)/|(^|/)(package(-lock)?\.json|build\.mjs|[^/]*\.py|[^/]*\.md|\.gitignore|\.nojekyll)$' \
     | while IFS= read -r f; do mkdir -p "$dest/$(dirname "$f")"; cp "$src/$f" "$dest/$f"; done
   # la pestaña «Volver a la Estación» en la página principal de cada juego (y de Rutinator)
   if [ -f "$dest/index.html" ]; then
