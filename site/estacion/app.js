@@ -112,6 +112,7 @@ const I = {
   'unit.mission': ['{n} misión nueva', '{n} nouvelle mission'], 'unit.missions': ['{n} misiones nuevas', '{n} nouvelles missions'],
   'unit.room': ['{n} cámara superada', '{n} salle réussie'], 'unit.rooms': ['{n} cámaras superadas', '{n} salles réussies'],
   'unit.key': ['{n} llave nueva', '{n} nouvelle clé'], 'unit.keys': ['{n} llaves nuevas', '{n} nouvelles clés'],
+  'unit.challenge': ['{n} reto superado', '{n} défi réussi'], 'unit.challenges': ['{n} retos superados', '{n} défis réussis'],
   'unit.session': ['una partida', 'une partie'], 'unit.progress': ['nuevos avances', 'de nouveaux progrès'],
   /* zona de padres */
   'p.title': ['Zona de padres', 'Espace parents'], 'p.pending': ['Por revisar', 'À relire'], 'p.history': ['Historial', 'Historique'], 'p.settings': ['Ajustes', 'Réglages'],
@@ -202,6 +203,8 @@ const R_PIT = [[0, ['Aprendiz de la Arena', 'Apprenti des sables']], [120, ['Por
 const pick2 = a => a[L === 'fr' ? 1 : 0];
 const PIT_IDS = ['c1', 'c2', 'c3', 'c7', 'c4', 'c8', 'c9', 'c10', 'c5', 'c6'];
 const hash = s => { let h = 0; s = String(s || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
+const REF_KEY = 'curionauta-refugio-0.1', REF_IDS = ['r1', 'r2', 'r3'];
+const REF_NOMBRES = [['Luz de emergencia', 'Éclairage de secours'], ['¿Aguanta la noche?', 'Ça tient toute la nuit ?'], ['El cable cortado', 'Le câble coupé']];
 const GAMES = [
   { id: 'chrono-ohm', name: 'Chrono-Ohm', sub: ['Electricidad · viaje en el tiempo', 'Électricité · voyage dans le temps'], url: '../juegos/chrono-ohm/', color: '#f2a65a', unit: ['misiones', 'missions'],
     read() {
@@ -249,7 +252,27 @@ const GAMES = [
   { id: 'umbral', name: 'UMBRAL', sub: ['Mazmorras tácticas en 3D', 'Donjons tactiques en 3D'], url: '../juegos/umbral/', color: '#c77dff',
     read() { const s = read('umbral.save.v3'); return s ? { xp: 0, done: 0, total: 0, label: t('games.inprog'), at: s.savedAt || s.t || 0 } : null; },
     snap() { const s = read('umbral.save.v3'); return s ? { at: s.savedAt || s.t || 0 } : null; },
-    diff(a, b) { return b.at && b.at !== a.at ? { topic: 'general', n: 0, unit: 'session', xp: 0, hard: false } : null; } }
+    diff(a, b) { return b.at && b.at !== a.at ? { topic: 'general', n: 0, unit: 'session', xp: 0, hard: false } : null; } },
+  /* El Refugio: tres retos (r1 LED y ley de Ohm, r2 energía y batería, r3 cable cortado). Cada reto superado vale 40,
+     lo mismo que da el juego en Energía. Después de los tres, modo libre. */
+  { id: 'refugio', name: 'El Refugio', sub: ['Monta, cablea y mide tu refugio a 12 V', 'Monte, câble et mesure ton refuge en 12 V'], url: '../refugio/', color: '#6fd99a', unit: ['retos', 'défis'],
+    read() {
+      const s = read(REF_KEY); if (!s || !(s.reto || s.step || (s.cables && s.cables.length))) return null;
+      const done = REF_IDS.filter(k => (s.done || {})[k]).length;
+      return { xp: done * 40, done, total: REF_IDS.length, label: pick2(done >= REF_IDS.length ? ['Modo libre', 'Mode libre'] : REF_NOMBRES[done]), at: s.at || 0 };
+    },
+    snap() {
+      const s = read(REF_KEY); if (!s) return null; const d = {}; REF_IDS.forEach(k => (d[k] = (s.done || {})[k] ? 1 : 0));
+      const montaje = Object.keys(s.placed || {}).sort().map(k => k + ':' + s.placed[k].t).join() + '|' + (s.cables || []).map(c => c.a + '-' + c.b).sort().join();
+      return { d, st: (s.reto || 0) * 10 + (s.step || 0), q: (s.stats && s.stats.ledsQuemados) || 0, m: hash(montaje) };
+    },
+    diff(a, b) {
+      const nuevos = REF_IDS.filter(k => b.d[k] && !(a.d && a.d[k]));
+      if (nuevos.length) return { topic: nuevos[nuevos.length - 1], n: nuevos.length, unit: 'challenge', xp: nuevos.length * 40, hard: b.q - (a.q || 0) >= 2 };
+      if (b.st > (a.st || 0)) return { topic: 'general', n: 0, unit: '', xp: 0, hard: false };                      // ha avanzado pasos de un reto
+      if (b.st >= REF_IDS.length * 10 && b.m !== a.m) return { topic: 'general', n: 0, unit: 'session', xp: 0, hard: false };   // modo libre: ha montado algo distinto
+      return null;
+    } }
 ];
 let remoteProg = {};
 function bestProgress(g) { const loc = g.read(); const rem = remoteProg[g.id]; if (!rem) return loc; if (!loc) return rem; return (rem.xp || 0) > (loc.xp || 0) || (rem.done || 0) > (loc.done || 0) ? rem : loc; }
@@ -798,7 +821,7 @@ async function checkMove() {
   let data = null; try { data = await readMove(location.hash); } catch (e) { data = null; }
   history.replaceState(null, '', location.pathname + location.search);
   if (!data || typeof data !== 'object' || !data.keys) { modal(`<h3>${esc(t('mv.title'))}</h3><p>${esc(t('mv.bad'))}</p><div class="row"><button class="btn pri" id="mvX">${esc(t('btn.ok'))}</button></div>`, c => { $('#mvX').onclick = c; }); return; }
-  const names = { 'chrono-ohm-v1': 'Chrono-Ohm', 'expedicion-pitagoras-v1': 'La Expedición Pitágoras', 'philoquest.v3.store': 'PhiloQuest', 'umbral.save.v3': 'UMBRAL', 'rutineitor.v3.estado': 'Rutinator', [KEY]: t('mv.station') };
+  const names = { 'chrono-ohm-v1': 'Chrono-Ohm', 'expedicion-pitagoras-v1': 'La Expedición Pitágoras', 'philoquest.v3.store': 'PhiloQuest', 'umbral.save.v3': 'UMBRAL', 'curionauta-refugio-0.1': 'El Refugio', 'rutineitor.v3.estado': 'Rutinator', [KEY]: t('mv.station') };
   const rows = Object.keys(data.keys).filter(k => typeof data.keys[k] === 'string' && !/auth|sb-|fake-sess/i.test(k)).map(k => {
     const mine = localStorage.getItem(k); const keepMine = mine && k !== KEY && progressOf(k, mine) >= progressOf(k, data.keys[k]);
     return { k, name: names[k] || k, keepMine };

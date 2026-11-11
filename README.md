@@ -58,7 +58,7 @@ Para cambiar o añadir frases y preguntas: `site/estacion/mentores.js`. Cada tem
 ## Voces de los mentores
 
 - `node tools/voces-inventario.js` → `voces/inventario-es.csv` y `-fr.csv`: cada frase con su archivo y sus caracteres
-  (hoy, 784 audios y 72.561 caracteres en total).
+  (hoy, 928 audios y 88.613 caracteres en total).
 - Las voces elegidas van en `voces/voces.json`; `ELEVENLABS_API_KEY=… node tools/voces-grabar.js` graba lo que falte
   en `site/estacion/audio/` y actualiza `audio/manifest.json`.
 - Mientras no haya audio, el botón 🔊 usa la voz del aparato con un tono distinto para cada mentor.

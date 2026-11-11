@@ -135,12 +135,38 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await ctx.close();
   }
   /* ---------- 2d. pestaña «Volver a la Estación» en cada juego ---------- */
-  for (const u of ['/juegos/chrono-ohm/', '/juegos/pitagoras/', '/juegos/philoquest/', '/juegos/umbral/', '/rutinator/']) {
+  for (const u of ['/juegos/chrono-ohm/', '/juegos/pitagoras/', '/juegos/philoquest/', '/juegos/umbral/', '/rutinator/', '/refugio/']) {
     const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'volver' + u });
     await p.goto(BASE + u); await p.waitForTimeout(1500);
     const ok = await p.evaluate(() => { const h = document.querySelector('[data-curionauta="volver"]'); const a = h && h.shadowRoot && h.shadowRoot.querySelector('a'); if (!a) return null; const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), visible: r.right > 20 && r.right < 60 }; });
     check(ok && ok.href === '/estacion/' && ok.visible, `pestaña «Volver» en ${u} (${JSON.stringify(ok)})`);
     await p.screenshot({ path: path.join(SH, 'volver-' + u.split('/').filter(Boolean).pop() + '.png') });
+    await ctx.close();
+  }
+  /* ---------- 2e. El Refugio en la Estación: tarjeta, progreso y comentario del mentor ---------- */
+  {
+    const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'refugio' });
+    const REF = { v: 1, e: 0, inv: {}, placed: { banco: { t: 'bat_s', wh: 40 }, puerta: { t: 'led' }, c1: { t: 'sw', on: false } }, cables: [], time: 20.5, reto: 0, step: 1, done: {}, stats: { ledsQuemados: 0 }, nextId: 1 };
+    await p.goto(BASE + '/estacion/'); await p.waitForTimeout(500);
+    const card = () => p.evaluate(() => { const a = [...document.querySelectorAll('#games .game')].find(x => /El Refugio/.test(x.textContent)); return a ? { txt: a.textContent.replace(/\s+/g, ' ').trim(), href: a.querySelector('a').getAttribute('href') } : null; });
+    let c = await card(); check(c && /Aún sin empezar/.test(c.txt) && c.href === '../refugio/', `refugio: tarjeta en la Estación sin empezar (${c && c.txt.slice(0, 70)})`);
+    check((await p.request.get(BASE + '/refugio/')).ok(), 'refugio: /refugio/ responde');
+    await p.click('#mChoose'); await p.click('[data-m="brujula"]');
+    await p.evaluate(r => { localStorage.setItem('curionauta-refugio-0.1', JSON.stringify(r)); document.dispatchEvent(new Event('visibilitychange')); }, REF); await p.waitForTimeout(400);
+    c = await card(); check(c && /Luz de emergencia/.test(c.txt) && /0\/3 retos/.test(c.txt) && /Seguir jugando/.test(c.txt), `refugio: empezado, muestra el reto en curso (${c && c.txt.slice(0, 90)})`);
+    const R1 = Object.assign({}, REF, { reto: 1, step: 0, e: 40, done: { r1: '2026-11-11' }, cables: [{ id: 1, a: 'banco.a', b: 'c1.a' }], at: Date.now() });
+    await p.evaluate(r => { localStorage.setItem('curionauta-refugio-0.1', JSON.stringify(r)); document.dispatchEvent(new Event('visibilitychange')); }, R1); await p.waitForTimeout(400);
+    c = await card(); check(c && /1\/3 retos/.test(c.txt) && /40 XP/.test(c.txt) && /¿Aguanta la noche\?/.test(c.txt), `refugio: un reto superado → 1/3 y 40 XP (${c && c.txt.slice(0, 90)})`);
+    const mt = (await p.textContent('#mentorBox')).replace(/\s+/g, ' ');
+    check(/El Refugio/.test(mt) && (/1 reto superado/.test(mt) || /\+40 XP/.test(mt)) && /Holonyak/.test(mt) && /560 Ω/.test(mt), `refugio: el mentor comenta el reto y pregunta («${mt.slice(0, 110)}…»)`);
+    await p.screenshot({ path: path.join(SH, 'est-refugio.png'), fullPage: true });
+    const FIN = Object.assign({}, R1, { reto: 3, done: { r1: '2026-11-11', r2: '2026-11-11', r3: '2026-11-11' }, e: 90 });
+    await p.evaluate(r => { localStorage.setItem('curionauta-refugio-0.1', JSON.stringify(r)); __EST.setLang('fr'); document.dispatchEvent(new Event('visibilitychange')); }, FIN); await p.waitForTimeout(400);
+    c = await card(); check(c && /Mode libre/.test(c.txt) && /3\/3 défis/.test(c.txt) && /120 XP/.test(c.txt) && /Monte, câble et mesure/.test(c.txt), `refugio: en francés y terminado (${c && c.txt.slice(0, 100)})`);
+    const mf = (await p.textContent('#mentorBox')).replace(/\s+/g, ' ');
+    check(/El Refugio/.test(mf) && /Le câble coupé et le multimètre|Macadie/.test(mf), `refugio: el mentor lo comenta en francés («${mf.slice(0, 110)}…»)`);
+    await p.screenshot({ path: path.join(SH, 'est-refugio-fr.png'), fullPage: true });
+    check(await desborde(p) <= 1, 'refugio: la Estación no desborda en móvil con la tarjeta nueva');
     await ctx.close();
   }
   /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */

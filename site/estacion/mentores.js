@@ -406,6 +406,48 @@ window.CURIO_MENTORES = (function () {
         q('Con 2 dados, ¿cuántas veces de cada 4 sale al menos una calavera? ¿Cómo lo has pensado?', 'Avec 2 dés, combien de fois sur 4 obtiens-tu au moins un crâne ? Comment as-tu raisonné ?'),
         q('¿Qué dilema de la noche te costó más decidir? ¿Qué razón te convenció?', 'Quel dilemme de la nuit a été le plus difficile à trancher ? Quelle raison t’a convaincu ?')
       ]
+    },
+
+    /* ============ El Refugio ============ */
+    'refugio:r1': {
+      nombre: q('La luz de emergencia y su resistencia', 'L’éclairage de secours et sa résistance'),
+      dato: q('El primer LED de luz visible lo fabricó Nick Holonyak en 1962, y era rojo. El LED azul tardó unos treinta años más, y sus inventores recibieron el Nobel de Física en 2014.',
+        'La première LED à lumière visible a été fabriquée par Nick Holonyak en 1962, et elle était rouge. La LED bleue a mis une trentaine d’années de plus, et ses inventeurs ont reçu le prix Nobel de physique en 2014.'),
+      preguntas: [
+        q('El cálculo daba 500 Ω y en la caja había 470 Ω y 560 Ω. ¿Por qué conviene la de 560 Ω, si la de 470 Ω está más cerca?', 'Le calcul donnait 500 Ω et, dans la boîte, il y avait 470 Ω et 560 Ω. Pourquoi vaut-il mieux prendre celle de 560 Ω, alors que celle de 470 Ω est plus proche ?'),
+        q('Si la batería fuera de 6 V en vez de 12 V, ¿qué resistencia necesitaría el mismo LED? Explica cómo lo calculas.', 'Si la batterie était de 6 V au lieu de 12 V, de quelle résistance la même LED aurait-elle besoin ? Explique ton calcul.'),
+        q('¿Qué le pasaría al brillo del LED con la resistencia de 1.000 Ω? ¿Por qué?', 'Que deviendrait l’éclat de la LED avec la résistance de 1 000 Ω ? Pourquoi ?')
+      ]
+    },
+    'refugio:r2': {
+      nombre: q('Energía para toda la noche', 'De l’énergie pour toute la nuit'),
+      dato: q('En 1859, el francés Gaston Planté inventó la primera batería recargable, de plomo y ácido. Muchos coches siguen arrancando hoy con una batería de ese tipo.',
+        'En 1859, le Français Gaston Planté a inventé la première batterie rechargeable, au plomb et à l’acide. Aujourd’hui encore, beaucoup de voitures démarrent avec une batterie de ce type.'),
+      preguntas: [
+        q('¿En qué se diferencian los vatios (W) de los vatios-hora (Wh)? Explícalo con un aparato de tu casa.', 'Quelle est la différence entre les watts (W) et les wattheures (Wh) ? Explique-la avec un appareil de chez toi.'),
+        q('Una batería de 120 Wh, ¿cuántas horas mantiene encendida una bombilla de 5 W? ¿Y dos bombillas a la vez?', 'Une batterie de 120 Wh, pendant combien d’heures garde-t-elle allumée une ampoule de 5 W ? Et deux ampoules en même temps ?'),
+        q('¿Por qué la placa solar carga más al mediodía que a primera hora de la mañana?', 'Pourquoi le panneau solaire charge-t-il plus à midi que tôt le matin ?')
+      ]
+    },
+    'refugio:r3': {
+      nombre: q('El cable cortado y el multímetro', 'Le câble coupé et le multimètre'),
+      dato: q('El multímetro lo ideó hacia 1920 Donald Macadie, un ingeniero de correos británico cansado de cargar con un aparato distinto para medir amperios, voltios y ohmios.',
+        'Le multimètre a été imaginé vers 1920 par Donald Macadie, un ingénieur des postes britanniques fatigué de transporter un appareil différent pour mesurer les ampères, les volts et les ohms.'),
+      preguntas: [
+        q('Por fuera todos los cables parecían iguales. ¿Cómo decidiste por cuál empezar a medir?', 'De l’extérieur, tous les câbles avaient l’air pareils. Comment as-tu décidé par lequel commencer ?'),
+        q('¿Por qué es mejor apagar el interruptor antes de medir la continuidad?', 'Pourquoi vaut-il mieux couper l’interrupteur avant de mesurer la continuité ?'),
+        q('Una lámpara de casa deja de encender. Sin abrir nada, ¿qué comprobarías primero y por qué en ese orden?', 'Chez toi, une lampe ne s’allume plus. Sans rien ouvrir, que vérifierais-tu en premier, et pourquoi dans cet ordre ?')
+      ]
+    },
+    'refugio:general': {
+      nombre: q('El taller del refugio', 'L’atelier du refuge'),
+      dato: q('En 1958, el satélite Vanguard 1 fue el primero que funcionó con energía solar. Dejó de emitir en 1964, pero sigue dando vueltas a la Tierra.',
+        'En 1958, le satellite Vanguard 1 a été le premier à fonctionner à l’énergie solaire. Il a cessé d’émettre en 1964, mais il tourne toujours autour de la Terre.'),
+      preguntas: [
+        q('¿Qué has montado hoy en el refugio? ¿Qué problema querías resolver?', 'Qu’as-tu monté aujourd’hui dans le refuge ? Quel problème voulais-tu résoudre ?'),
+        q('¿Dónde pondrías un fusible para que proteja todo el refugio? ¿Por qué ahí?', 'Où placerais-tu un fusible pour qu’il protège tout le refuge ? Pourquoi là ?'),
+        q('Si pudieras añadir un aparato nuevo al refugio, ¿cuál sería y cuánta energía gastaría en una noche?', 'Si tu pouvais ajouter un nouvel appareil au refuge, lequel choisirais-tu, et combien d’énergie consommerait-il en une nuit ?')
+      ]
     }
   };
 

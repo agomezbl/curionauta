@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111416">
-<meta name="description" content="El Refugio 0.1 · Curionaut: una sala a 12 V para montar, cablear y medir con el multímetro.">
+<meta name="description" content="El Refugio · Curionaut: una sala a 12 V para montar, cablear y medir con el multímetro.">
 <title>El Refugio · Curionaut</title>
 <link rel="icon" href="../estacion/icon-192.png">
 <style>
@@ -48,7 +48,7 @@ button,input{font:inherit;color:inherit}
 }
 /* HUD sobre la escena */
 .hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
-.brand{font:800 26px/1 var(--fd);letter-spacing:.06em;color:var(--ink);text-shadow:0 2px 12px rgba(0,0,0,.6);margin-right:auto}
+.brand{font:800 26px/1 var(--fd);letter-spacing:.06em;color:var(--ink);text-shadow:0 2px 12px rgba(0,0,0,.6);margin:0 auto 0 0}
 .brand small{font:400 13px var(--fm);color:var(--amber);letter-spacing:0;margin-left:6px;vertical-align:4px}
 .chip{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border-radius:999px;background:rgba(17,20,22,.82);border:1px solid var(--line2);font:400 17px var(--fm);font-variant-numeric:tabular-nums;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .chip.energy{color:var(--amber)}
@@ -117,7 +117,12 @@ button,input{font:inherit;color:inherit}
 .pass .seal{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;border:2px solid var(--line2);color:var(--faint);font:800 15px var(--fd)}
 .pass li.got .seal{border-color:var(--ok);color:var(--ok);background:rgba(111,217,154,.08)}
 .pass small{display:block;color:var(--dim);font-size:13px}
-.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--faint);font-size:13px;margin-top:auto;padding-top:8px}
+.foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;color:var(--dim);font-size:13px;margin-top:auto;padding-top:8px}
+.foot-b{display:flex;align-items:center;gap:8px;margin-left:auto}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:12px;overflow:hidden}
+.seg button{min-width:46px;min-height:42px;padding:0 10px;border:0;background:var(--panel2);color:var(--ink);font:700 14px var(--fb);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--amber);color:var(--amber-ink)}
+.seg button:focus-visible{outline-offset:-3px}
 .modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px;background:rgba(5,7,9,.72)}
 .sheet{width:min(460px,100%);max-height:calc(100% - 32px);overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.6)}
 .sheet h3{margin:0 0 8px;font:800 30px/1 var(--fd);letter-spacing:.05em;text-transform:uppercase}
@@ -126,33 +131,33 @@ button,input{font:inherit;color:inherit}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-<div class="app" id="app">
-  <section class="stage" id="stage" aria-label="El refugio en 3D">
-    <canvas id="cv" aria-label="Escena del refugio: toca los bornes, los cables y los aparatos"></canvas>
-    <div class="loading" id="loading">Encendiendo el refugio…</div>
+<main class="app" id="app">
+  <section class="stage" id="stage" aria-label="El refugio en 3D" data-t-aria="stage.aria">
+    <canvas id="cv" aria-label="Escena del refugio: toca los bornes, los cables y los aparatos" data-t-aria="cv.aria"></canvas>
+    <div class="loading" id="loading" data-t="loading">Encendiendo el refugio…</div>
     <div class="hud">
-      <div class="brand">EL REFUGIO<small>0.1</small></div>
+      <h1 class="brand"><span data-t="brand">EL REFUGIO</span><small>0.2</small></h1>
       <button class="btn-time" id="btnTime" hidden>⏩ Pasar la noche</button>
-      <div class="chip" id="clock" title="Hora del refugio">☾ 20:30</div>
-      <div class="chip energy" id="energy" title="Tu Energía">⚡ 0</div>
+      <div class="chip" id="clock" title="Hora del refugio" data-t-title="clock.title">☾ 20:30</div>
+      <div class="chip energy" id="energy" title="Tu Energía" data-t-title="energy.title">⚡ 0</div>
     </div>
     <div class="hint" id="hint" aria-live="polite"></div>
     <div class="toast" id="toast" role="status" hidden></div>
     <div class="meter" id="meter" hidden>
-      <p class="name">MULTÍMETRO</p>
+      <p class="name" data-t="meter.name">MULTÍMETRO</p>
       <div class="lcd" id="lcd"><small id="lcdMode">V⎓</small><span id="lcdVal">– – –</span></div>
-      <div class="modes" role="group" aria-label="Qué mide">
-        <button data-m="V" aria-pressed="true" title="Tensión (voltios)">V⎓</button>
-        <button data-m="A" aria-pressed="false" title="Intensidad con la pinza (amperios)">A</button>
-        <button data-m="R" aria-pressed="false" title="Resistencia (ohmios)">Ω</button>
-        <button data-m="C" aria-pressed="false" title="Continuidad: pita si el cable está bien">)))</button>
+      <div class="modes" role="group" aria-label="Qué mide" data-t-aria="meter.aria">
+        <button data-m="V" aria-pressed="true" title="Tensión (voltios)" data-t-title="meter.V">V⎓</button>
+        <button data-m="A" aria-pressed="false" title="Intensidad con la pinza (amperios)" data-t-title="meter.A">A</button>
+        <button data-m="R" aria-pressed="false" title="Resistencia (ohmios)" data-t-title="meter.R">Ω</button>
+        <button data-m="C" aria-pressed="false" title="Continuidad: pita si el cable está bien" data-t-title="meter.C">)))</button>
       </div>
     </div>
-    <nav class="tools" aria-label="Herramientas">
-      <button class="tool" data-tool="montar" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg>Montar</button>
-      <button class="tool" data-tool="cable" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 19c4 0 4-14 8-14s4 14 8 14"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="19" r="2"/></svg>Cable</button>
-      <button class="tool" data-tool="medir" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><rect x="8" y="5" width="8" height="5" rx="1"/><circle cx="12" cy="16" r="2.5"/></svg>Medir</button>
-      <button class="tool" data-tool="quitar" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Quitar</button>
+    <nav class="tools" aria-label="Herramientas" data-t-aria="tools.aria">
+      <button class="tool" data-tool="montar" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/></svg><span data-t="tool.montar">Montar</span></button>
+      <button class="tool" data-tool="cable" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 19c4 0 4-14 8-14s4 14 8 14"/><circle cx="4" cy="19" r="2"/><circle cx="20" cy="19" r="2"/></svg><span data-t="tool.cable">Cable</span></button>
+      <button class="tool" data-tool="medir" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="3"/><rect x="8" y="5" width="8" height="5" rx="1"/><circle cx="12" cy="16" r="2.5"/></svg><span data-t="tool.medir">Medir</span></button>
+      <button class="tool" data-tool="quitar" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg><span data-t="tool.quitar">Quitar</span></button>
     </nav>
     <div class="flash" id="flash"></div>
   </section>
@@ -160,22 +165,22 @@ button,input{font:inherit;color:inherit}
   <aside class="side" id="side">
     <div class="mentor">
       <svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" fill="#20262a" stroke="#7cc4ff" stroke-width="2"/><path d="M14 17h11v20H14a2 2 0 0 1-2-2V19a2 2 0 0 1 2-2zM38 17H27v20h11a2 2 0 0 0 2-2V19a2 2 0 0 0-2-2z" fill="none" stroke="#ece7dc" stroke-width="2"/><path d="M33 22l1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3z" fill="#ffb13b"/><path d="M16 23h6M16 27h6M16 31h4" stroke="#a7aea9" stroke-width="1.5"/></svg>
-      <div class="bubble"><b class="who">BITÁCORA</b><span id="mentorTxt">Bienvenido al refugio. Esta noche hay que dejarlo funcionando.</span></div>
+      <div class="bubble"><b class="who">BITÁCORA</b><span id="mentorTxt">Te doy la bienvenida al refugio. Esta noche hay que dejarlo funcionando.</span></div>
     </div>
     <section class="card" id="reto" aria-live="polite"></section>
     <section class="card">
-      <h2><small id="invSub">Toca una pieza y luego su sitio en el refugio</small>Caja de piezas</h2>
+      <h2><small id="invSub" data-t="inv.sub">Toca una pieza y luego su sitio en el refugio</small><span data-t="inv.title">Caja de piezas</span></h2>
       <ul class="list" id="inv"></ul>
-      <p class="sub">Tienda</p>
+      <p class="sub" data-t="shop.title">Tienda</p>
       <ul class="list" id="shop"></ul>
     </section>
     <section class="card">
-      <h2><small>Lo que ya sabes hacer</small>Pasaporte</h2>
+      <h2><small data-t="pass.sub">Lo que ya sabes hacer</small><span data-t="pass.title">Pasaporte</span></h2>
       <ul class="list pass" id="pass"></ul>
     </section>
-    <div class="foot"><span>Prototipo de Curionauta · solo en este aparato</span><button class="btn sm" id="btnReset">Empezar de nuevo</button></div>
+    <div class="foot"><span data-t="foot">Prototipo de Curionaut · se guarda solo en este aparato</span><div class="foot-b"><div class="seg" role="group" aria-label="Idioma" data-t-aria="lang.aria"><button type="button" data-lang="es" lang="es" aria-pressed="true" title="Español">ES</button><button type="button" data-lang="fr" lang="fr" aria-pressed="false" title="Français">FR</button></div><button class="btn sm" id="btnReset" data-t="reset.btn">Empezar de nuevo</button></div></div>
   </aside>
-</div>
+</main>
 <div class="modal" id="modal" hidden><div class="sheet" role="dialog" aria-modal="true" id="sheet"></div></div>
 
 <script src="three.min.js"></script>
@@ -184,36 +189,164 @@ button,input{font:inherit;color:inherit}
 'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt=(n,d)=>n.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt=(n,d)=>n.toLocaleString(LOC(),{minimumFractionDigits:d,maximumFractionDigits:d});
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+/* =====================================================================
+   0. IDIOMA: cada texto lleva su versión en español y en francés
+   ===================================================================== */
+let L='es';
+const q=(es,fr)=>({es,fr});
+const frTipo=s=>s.replace(/ ([?!:;»])/g,' $1').replace(/« /g,'« ');   // en francés, espacio que no se parte antes de ? ! : ;
+const tt=o=>o==null?'':typeof o==='string'?o:L==='fr'?frTipo(o.fr):o.es;
+const t=(k,v)=>{let s=tt(TX[k]);if(v)for(const x in v)s=s.split('{'+x+'}').join(v[x]);return s};
+const LOC=()=>L==='fr'?'fr-FR':'es-ES';
+const TX={
+  'doc.title':q('El Refugio · Curionaut','El Refugio · Curionaut'),   // el título del juego no se traduce, como en los demás juegos
+  'doc.desc':q('El Refugio · Curionaut: una sala a 12 V para montar, cablear y medir con el multímetro.','El Refugio · Curionaut : une pièce en 12 V à monter, à câbler et à mesurer au multimètre.'),
+  'stage.aria':q('El refugio en 3D','Le refuge en 3D'),
+  'cv.aria':q('Escena del refugio: toca los bornes, los cables y los aparatos','Scène du refuge : touche les bornes, les câbles et les appareils'),
+  'loading':q('Encendiendo el refugio…','Mise sous tension du refuge…'),
+  'brand':q('EL REFUGIO','EL REFUGIO'),
+  'clock.title':q('Hora del refugio','Heure du refuge'),'energy.title':q('Tu Energía','Ton Énergie'),
+  'meter.name':q('MULTÍMETRO','MULTIMÈTRE'),'meter.aria':q('Qué mide','Ce qu’il mesure'),
+  'meter.V':q('Tensión (voltios)','Tension (volts)'),'meter.A':q('Intensidad con la pinza (amperios)','Intensité avec la pince (ampères)'),
+  'meter.R':q('Resistencia (ohmios)','Résistance (ohms)'),'meter.C':q('Continuidad: pita si el cable está bien','Continuité : il bipe si le câble est bon'),
+  'tools.aria':q('Herramientas','Outils'),
+  'tool.montar':q('Montar','Monter'),'tool.cable':q('Cable','Câble'),'tool.medir':q('Medir','Mesurer'),'tool.quitar':q('Quitar','Retirer'),
+  'mentor.hello':q('Te doy la bienvenida al refugio. Esta noche hay que dejarlo funcionando.','Bienvenue au refuge. Ce soir, il faut le mettre en état de marche.'),
+  'mentor.back':q('Seguimos donde lo dejaste.','On reprend là où tu en étais.'),
+  'inv.sub':q('Toca una pieza y luego su sitio en el refugio','Touche une pièce, puis sa place dans le refuge'),'inv.title':q('Caja de piezas','Boîte à pièces'),
+  'inv.empty':q('La caja está vacía. Quita piezas o compra en la tienda.','La boîte est vide. Retire des pièces ou achètes-en à la boutique.'),
+  'shop.title':q('Tienda','Boutique'),
+  'shop.lock2':q('Se desbloquea en el reto 2','Se débloque au défi 2'),'shop.lockEnd':q('Se desbloquea al terminar los retos','Se débloque à la fin des défis'),
+  'shop.aria':q('Comprar {x} por {p} de Energía','Acheter {x} pour {p} d’Énergie'),
+  'shop.bought':q('Has comprado: {x}. Ahora toca su sitio en el refugio.','Tu as acheté : {x}. Touche maintenant sa place dans le refuge.'),
+  'pass.sub':q('Lo que ya sabes hacer','Ce que tu sais déjà faire'),'pass.title':q('Pasaporte','Passeport'),
+  'pass.done':q('Demostrado en El Refugio · {d}','Démontré dans El Refugio · {d}'),'pass.todo':q('Pendiente · {f}','À venir · {f}'),
+  'foot':q('Prototipo de Curionaut · se guarda solo en este aparato','Prototype Curionaut · enregistré uniquement sur cet appareil'),
+  'lang.aria':q('Idioma','Langue'),
+  'reset.btn':q('Empezar de nuevo','Recommencer'),
+  'reset.txt':q('Se borran tu Energía, tus piezas y los retos superados en este aparato.','Ton Énergie, tes pièces et tes défis réussis seront effacés sur cet appareil.'),
+  'reset.no':q('Cancelar','Annuler'),'reset.yes':q('Borrar y empezar','Effacer et recommencer'),
+  /* rótulos pintados en la escena */
+  'tex.cuadro':q('CUADRO · 12 V','TABLEAU · 12 V'),'tex.refugio':q('REFUGIO 01','REFUGE 01'),'tex.salida':q('SALIDA','SORTIE'),
+  /* retos */
+  'reto.head':q('Reto {a} de {b} · paso {c} de {d}','Défi {a} sur {b} · étape {c} sur {d}'),
+  'ans.aria':q('Tu respuesta en {u}','Ta réponse en {u}'),'ans.check':q('Comprobar','Vérifier'),
+  'ans.hint':q('Dame una pista','Donne-moi un indice'),'ans.nohint':q('Sin más pistas','Plus d’indices'),
+  'ans.nan':q('Escribe un número.','Écris un nombre.'),'ans.try':q('Todavía no. Prueba con una pista.','Pas encore. Essaie avec un indice.'),
+  'storm.go':q('Seguir','Continuer'),
+  'time.fb':q('Usa el botón ⏩ de arriba, junto a la hora.','Utilise le bouton ⏩ en haut, à côté de l’heure.'),
+  'tools.fb':q('Usa las herramientas de abajo: Montar, Cable, Medir y Quitar.','Utilise les outils du bas : Monter, Câble, Mesurer et Retirer.'),
+  'done.title':q('Reto superado','Défi réussi'),'done.pass':q('Nuevo en tu Pasaporte:','Nouveau dans ton Passeport :'),
+  'done.next':q('Siguiente reto: <b>{x}</b>.','Défi suivant : <b>{x}</b>.'),
+  'done.all':q('Has terminado los tres retos. Ahora el refugio es tuyo: compra piezas y prueba lo que quieras.','Tu as terminé les trois défis. Maintenant, le refuge est à toi : achète des pièces et essaie ce que tu veux.'),
+  'done.go':q('Al siguiente reto','Au défi suivant'),'done.letsgo':q('Vamos allá.','C’est parti.'),
+  'free.title':q('Modo libre','Mode libre'),'free.sub':q('Retos superados: 3 de 3','Défis réussis : 3 sur 3'),
+  'free.q':q('El refugio es tuyo. Compra piezas en la tienda y prueba combinaciones. Algunas ideas:','Le refuge est à toi. Achète des pièces à la boutique et essaie des combinaisons. Quelques idées :'),
+  'free.i1':q('Un timbre','Une sonnette'),'free.d1':q('Zumbador en la pared con su propio interruptor.','Un buzzer au mur avec son propre interrupteur.'),
+  'free.i2':q('Dos luces, dos interruptores','Deux lumières, deux interrupteurs'),'free.d2':q('Cada luz con su hueco en el cuadro.','Chaque lumière avec son emplacement sur le tableau.'),
+  'free.i3':q('Un fusible que proteja todo','Un fusible qui protège tout'),'free.d3':q('Ponlo justo después del + de la batería.','Mets-le juste après le + de la batterie.'),
+  'free.say':q('Modo libre. Ideas: un timbre en la puerta, un ventilador para el verano o dos luces con dos interruptores.','Mode libre. Des idées : une sonnette à la porte, un ventilateur pour l’été ou deux lumières avec deux interrupteurs.'),
+  'free.say2':q('Modo libre. El refugio es tuyo.','Mode libre. Le refuge est à toi.'),
+  /* tiempo */
+  'time.night':q('⏩ Pasar la noche','⏩ Passer la nuit'),'time.day':q('⏩ Pasar el día','⏩ Passer la journée'),
+  'time.toNight':q('⏩ Hasta la noche','⏩ Jusqu’à la nuit'),'time.toDay':q('⏩ Hasta el día','⏩ Jusqu’au jour'),
+  'night.need':q('Primero enciende la bombilla.','Allume d’abord l’ampoule.'),'night.go':q('Pasan las horas… mira la batería.','Les heures passent… regarde la batterie.'),
+  'day.need':q('Primero pon la placa solar en el exterior.','Pose d’abord le panneau solaire à l’extérieur.'),'day.go':q('Sale el sol. Cuanto más alto está, más carga.','Le soleil se lève. Plus il est haut, plus le panneau charge.'),
+  'night.fail':q('La luz se apagó antes de las 06:00.','La lumière s’est éteinte avant 6 h.'),
+  'night.failSay':q('La batería se ha vaciado antes de que amaneciera. Te la recargo con el generador para que lo intentes otra vez.','La batterie s’est vidée avant le lever du jour. Je te la recharge avec le groupe électrogène pour que tu réessaies.'),
+  'day.notfull':q('La batería no se ha llenado.','La batterie ne s’est pas remplie.'),'day.nothing':q('La placa no ha cargado nada: revisa sus cables.','Le panneau n’a rien chargé : vérifie ses câbles.'),
+  'day.some':q('Ha cargado algo, pero no lo bastante. ¿Hay algo gastando mucho durante el día?','Il a un peu chargé, mais pas assez. Est-ce que quelque chose consomme beaucoup pendant la journée ?'),
+  'day.none':q('No ha entrado corriente desde la placa. Comprueba que su + va al + de la batería y su − al −.','Aucun courant n’est arrivé du panneau. Vérifie que son + va au + de la batterie et son − au −.'),
+  /* averías */
+  'fuse.toast':q('¡Fusible fundido! Ha protegido el circuito de un cortocircuito.','Fusible fondu ! Il a protégé le circuit d’un court-circuit.'),
+  'fuse.say':q('El fusible se ha sacrificado: pasaban {i} A. Busca dónde se juntan el + y el − sin nada en medio.','Le fusible s’est sacrifié : il passait {i} A. Cherche où le + et le − se rejoignent sans rien entre les deux.'),
+  'short.toast':q('¡Cortocircuito! El cable se ha quemado.','Court-circuit ! Le câble a brûlé.'),
+  'short.say':q('Has unido el + y el − de la batería sin nada en medio: pasan cientos de amperios. En la vida real eso quema cables y provoca incendios. Pon un fusible en el camino.','Tu as relié le + et le − de la batterie sans rien entre les deux : il passe des centaines d’ampères. Dans la vraie vie, ça brûle les câbles et ça provoque des incendies. Mets un fusible sur le chemin.'),
+  'bulb.dead':q('La bombilla se ha fundido: le llegaba demasiada tensión.','L’ampoule a grillé : elle recevait trop de tension.'),
+  'led.toast':q('¡El LED se ha quemado!','La LED a grillé !'),
+  'led.say':q('Pasaban {ma} mA y el LED aguanta 20 mA.','Il passait {ma} mA et la LED supporte 20 mA.'),
+  'led.fast':q('Con tanta corriente se quema enseguida.','Avec autant de courant, elle grille tout de suite.'),
+  'led.slow':q('Un poco por encima también lo estropea, solo que tarda más.','Un peu au-dessus, ça l’abîme aussi, mais ça prend plus de temps.'),
+  'led.spare':q('Te dejo un LED nuevo: con Montar, toca el LED quemado y se cambia. Fíjate en la resistencia.','Je te donne une LED neuve : avec Monter, touche la LED grillée pour la remplacer. Regarde bien la résistance.'),
+  'led.buy':q('Puedes comprar otro LED en la tienda.','Tu peux acheter une autre LED à la boutique.'),
+  'led.dim':q('Funciona, pero solo pasan {ma} mA y luce poco. ¿Puedes hacer que brille más sin pasar de 20 mA?','Ça marche, mais il ne passe que {ma} mA et elle éclaire peu. Peux-tu la faire briller davantage sans dépasser 20 mA ?'),
+  /* montar, cablear y quitar */
+  'new.toast':q('Pieza nueva en su sitio: {x}.','Pièce neuve en place : {x}.'),
+  'dead.nospare':q('Esta pieza está quemada y no te quedan de repuesto. Cómprala en la tienda.','Cette pièce est grillée et tu n’en as plus de rechange. Achètes-en une à la boutique.'),
+  'fuse.changed':q('Fusible cambiado.','Fusible remplacé.'),'fuse.none':q('No te quedan fusibles. Cómpralos en la tienda.','Tu n’as plus de fusibles. Achètes-en à la boutique.'),
+  'comp.info':q('{x}. Para quitar esta pieza, usa la herramienta Quitar.','{x}. Pour enlever cette pièce, utilise l’outil Retirer.'),
+  'mont.slot':q('Toca uno de los huecos iluminados.','Touche l’un des emplacements éclairés.'),
+  'mont.pick':q('Elige una pieza de tu caja de piezas y luego toca dónde ponerla.','Choisis une pièce dans ta boîte, puis touche l’endroit où la poser.'),
+  'cab.second':q('Toca el segundo borne.','Touche la deuxième borne.'),
+  'cab.first':q('Toca un borne: las bolitas doradas, rojas (+) o negras (−).','Touche une borne : les petites boules dorées, rouges (+) ou noires (−).'),
+  'cab.next':q('Ahora toca el borne donde va el otro extremo.','Touche maintenant la borne où va l’autre bout.'),
+  'cab.cancel':q('Cable cancelado.','Câble annulé.'),'cab.dup':q('Esos dos bornes ya están unidos.','Ces deux bornes sont déjà reliées.'),
+  'cab.done':q('Cable puesto. Toca otro borne para seguir cableando.','Câble posé. Touche une autre borne pour continuer à câbler.'),
+  'cab.brokenOut':q('Cable cortado retirado.','Câble coupé retiré.'),'cab.removed':q('Cable quitado.','Câble retiré.'),
+  'quit.what':q('Toca un cable o una pieza para quitarla.','Touche un câble ou une pièce pour l’enlever.'),
+  'place.where':q('Esa pieza va {w}.','Cette pièce va {w}.'),'place.none':q('No te quedan de esas.','Tu n’en as plus.'),
+  'place.busy':q('Ese hueco está ocupado. Quita antes lo que hay.','Cet emplacement est occupé. Enlève d’abord ce qui s’y trouve.'),
+  'place.done':q('Pieza colocada: {x}.','Pièce posée : {x}.'),
+  'rem.trash':q('Pieza quemada a la basura.','Pièce grillée à la poubelle.'),'rem.done':q('Pieza retirada con sus cables: {x}.','Pièce retirée avec ses câbles : {x}.'),
+  /* multímetro */
+  'lcd.A':q('A · pinza','A · pince'),'lcd.C':q('))) continuidad','))) continuité'),
+  'm.V.what':q('En voltios: toca un borne con la punta roja y otro con la negra.','En volts : touche une borne avec la pointe rouge et une autre avec la noire.'),
+  'm.V.red':q('Punta roja puesta. Ahora toca otro borne con la negra.','Pointe rouge posée. Touche maintenant une autre borne avec la noire.'),
+  'm.V.zero':q('0 V: entre esos dos puntos no hay diferencia de tensión.','0 V : entre ces deux points, il n’y a pas de différence de tension.'),
+  'm.V.val':q('Hay {v} V entre esos dos bornes.','Il y a {v} V entre ces deux bornes.'),
+  'm.A.what':q('Con la pinza: toca un cable y te digo cuánta corriente pasa.','Avec la pince : touche un câble et je te dis combien de courant passe.'),
+  'm.A.zero':q('No pasa corriente por ese cable.','Aucun courant ne passe dans ce câble.'),'m.A.val':q('Por ese cable pasan {i}.','Dans ce câble, il passe {i}.'),
+  'm.R.what':q('En ohmios: toca una pieza (mejor con el circuito apagado).','En ohms : touche une pièce (de préférence avec le circuit éteint).'),
+  'm.R.src':q('No se mide la resistencia de una batería ni de una placa: dan tensión y estropearían la lectura.','On ne mesure pas la résistance d’une batterie ni d’un panneau : ils fournissent une tension et fausseraient la mesure.'),
+  'm.R.live':q('Esa pieza tiene corriente. Apaga el interruptor antes de medir ohmios.','Un courant traverse cette pièce. Coupe l’interrupteur avant de mesurer des ohms.'),
+  'm.R.led':q('Un LED no se mide así: solo deja pasar corriente en un sentido.','Une LED ne se mesure pas comme ça : elle ne laisse passer le courant que dans un sens.'),
+  'm.R.ol':q('OL: el circuito está abierto ahí dentro.','OL : le circuit est ouvert à l’intérieur.'),'m.R.val':q('{x}: {v}.','{x} : {v}.'),
+  'm.C.what':q('En continuidad: toca un cable. Si pita, está bien.','En continuité : touche un câble. S’il bipe, il est bon.'),
+  'm.C.broken':q('OL y sin pitido: ¡este cable está cortado por dentro!','OL et pas de bip : ce câble est coupé à l’intérieur !'),
+  'm.C.ok':q('Pita: este cable está bien.','Il bipe : ce câble est bon.'),
+  'm.C.pass':q('Pita: pasa la corriente.','Il bipe : le courant passe.'),'m.C.open':q('No pita: ahí el circuito está abierto.','Pas de bip : à cet endroit, le circuit est ouvert.'),
+  /* ayuda de cada herramienta */
+  'b.mont.sel':q('Coloca: {x}. Toca un hueco iluminado.','À poser : {x}. Touche un emplacement éclairé.'),
+  'b.mont':q('Montar: elige una pieza de tu caja. Toca el interruptor para encenderlo.','Monter : choisis une pièce dans ta boîte. Touche l’interrupteur pour l’allumer.'),
+  'b.cab':q('Cable: toca un borne y después otro.','Câble : touche une borne, puis une autre.'),
+  'b.V':q('Voltios: borne con la punta roja y otro con la negra.','Volts : une borne avec la pointe rouge, une autre avec la noire.'),
+  'b.A':q('Pinza: toca un cable.','Pince : touche un câble.'),'b.R':q('Ohmios: toca una pieza apagada.','Ohms : touche une pièce hors tension.'),
+  'b.quit':q('Quitar: toca un cable o una pieza.','Retirer : touche un câble ou une pièce.'),
+  /* arranque */
+  'err.three':q('No se ha podido cargar el motor 3D. Comprueba la conexión y recarga.','Le moteur 3D n’a pas pu être chargé. Vérifie la connexion et recharge la page.'),
+  'err.gl':q('Este aparato no puede mostrar gráficos 3D.','Cet appareil ne peut pas afficher la 3D.')
+};
 
 /* =====================================================================
    1. PIEZAS Y SITIOS
    ===================================================================== */
 const COMP={
-  bat_s:{name:'Batería pequeña',kind:'battery',group:'banco',cap:40,desc:'12 V · guarda 40 Wh'},
-  bat_l:{name:'Batería grande',kind:'battery',group:'banco',cap:120,price:30,unlock:'r2',desc:'12 V · guarda 120 Wh'},
-  panel:{name:'Placa solar',kind:'solar',group:'exterior',price:25,unlock:'r2',desc:'Hasta 20 W a pleno sol'},
-  sw:{name:'Interruptor',kind:'switch',group:'cuadro',price:5,unlock:'free',desc:'Abre y cierra el circuito'},
-  fuse:{name:'Fusible 2 A',kind:'fuse',group:'cuadro',rating:2,price:5,desc:'Se funde si pasan más de 2 A'},
-  r220:{name:'Resistencia 220 Ω',kind:'res',R:220,group:'cuadro',bands:['#d23b2b','#d23b2b','#7a4a22'],desc:'rojo · rojo · marrón'},
-  r470:{name:'Resistencia 470 Ω',kind:'res',R:470,group:'cuadro',bands:['#e6c229','#7f4bc4','#7a4a22'],desc:'amarillo · violeta · marrón'},
-  r560:{name:'Resistencia 560 Ω',kind:'res',R:560,group:'cuadro',bands:['#2f9e4f','#2f6fd6','#7a4a22'],desc:'verde · azul · marrón'},
-  r1k:{name:'Resistencia 1.000 Ω',kind:'res',R:1000,group:'cuadro',bands:['#7a4a22','#151515','#d23b2b'],desc:'marrón · negro · rojo'},
-  led:{name:'LED de emergencia',kind:'led',group:'puerta',vf:2,price:5,desc:'2 V · como mucho 20 mA'},
-  bulb:{name:'Bombilla 12 V',kind:'bulb',group:'techo',R:28.8,P:5,price:15,unlock:'r2',desc:'12 V · 5 W'},
-  fan:{name:'Ventilador 12 V',kind:'fan',group:'pared',R:24,price:30,unlock:'free',desc:'12 V · 6 W'},
-  buzzer:{name:'Zumbador 12 V',kind:'buzzer',group:'pared',R:240,price:20,unlock:'free',desc:'Pita con 6 V o más'}
+  bat_s:{name:q('Batería pequeña','Petite batterie'),kind:'battery',group:'banco',cap:40,desc:q('12 V · guarda 40 Wh','12 V · stocke 40 Wh')},
+  bat_l:{name:q('Batería grande','Grande batterie'),kind:'battery',group:'banco',cap:120,price:30,unlock:'r2',desc:q('12 V · guarda 120 Wh','12 V · stocke 120 Wh')},
+  panel:{name:q('Placa solar','Panneau solaire'),kind:'solar',group:'exterior',price:25,unlock:'r2',desc:q('Hasta 20 W a pleno sol','Jusqu’à 20 W en plein soleil')},
+  sw:{name:q('Interruptor','Interrupteur'),kind:'switch',group:'cuadro',price:5,unlock:'free',desc:q('Abre y cierra el circuito','Ouvre et ferme le circuit')},
+  fuse:{name:q('Fusible 2 A','Fusible 2 A'),kind:'fuse',group:'cuadro',rating:2,price:5,desc:q('Se funde si pasan más de 2 A','Fond s’il passe plus de 2 A')},
+  r220:{name:q('Resistencia 220 Ω','Résistance 220 Ω'),kind:'res',R:220,group:'cuadro',bands:['#d23b2b','#d23b2b','#7a4a22'],desc:q('rojo · rojo · marrón','rouge · rouge · marron')},
+  r470:{name:q('Resistencia 470 Ω','Résistance 470 Ω'),kind:'res',R:470,group:'cuadro',bands:['#e6c229','#7f4bc4','#7a4a22'],desc:q('amarillo · violeta · marrón','jaune · violet · marron')},
+  r560:{name:q('Resistencia 560 Ω','Résistance 560 Ω'),kind:'res',R:560,group:'cuadro',bands:['#2f9e4f','#2f6fd6','#7a4a22'],desc:q('verde · azul · marrón','vert · bleu · marron')},
+  r1k:{name:q('Resistencia 1.000 Ω','Résistance 1\u00a0000 Ω'),kind:'res',R:1000,group:'cuadro',bands:['#7a4a22','#151515','#d23b2b'],desc:q('marrón · negro · rojo','marron · noir · rouge')},
+  led:{name:q('LED de emergencia','LED de secours'),kind:'led',group:'puerta',vf:2,price:5,desc:q('2 V · como mucho 20 mA','2 V · 20 mA au maximum')},
+  bulb:{name:q('Bombilla 12 V','Ampoule 12 V'),kind:'bulb',group:'techo',R:28.8,P:5,price:15,unlock:'r2',desc:q('12 V · 5 W','12 V · 5 W')},
+  fan:{name:q('Ventilador 12 V','Ventilateur 12 V'),kind:'fan',group:'pared',R:24,price:30,unlock:'free',desc:q('12 V · 6 W','12 V · 6 W')},
+  buzzer:{name:q('Zumbador 12 V','Buzzer 12 V'),kind:'buzzer',group:'pared',R:240,price:20,unlock:'free',desc:q('Pita con 6 V o más','Sonne à partir de 6 V')}
 };
 const SLOTS={
-  banco:{group:'banco',label:'el banco',pos:[1.25,0.9,-1.5],rot:0},
-  c1:{group:'cuadro',label:'el cuadro',pos:[-1.5,1.62,-2.1],rot:0},
-  c2:{group:'cuadro',label:'el cuadro',pos:[-0.85,1.62,-2.1],rot:0},
-  c3:{group:'cuadro',label:'el cuadro',pos:[-0.2,1.62,-2.1],rot:0},
-  puerta:{group:'puerta',label:'encima de la puerta',pos:[-3.06,2.42,0.55],rot:Math.PI/2},
-  techo:{group:'techo',label:'el techo',pos:[0.7,2.4,0.2],rot:0},
-  exterior:{group:'exterior',label:'el exterior',pos:[3.75,0,0.9],rot:-Math.PI/2},
-  pared:{group:'pared',label:'la pared',pos:[-3.08,1.45,-1.05],rot:Math.PI/2}
+  banco:{group:'banco',where:q('en el banco','sur l’établi'),pos:[1.25,0.9,-1.5],rot:0},
+  c1:{group:'cuadro',where:q('en el cuadro','sur le tableau'),pos:[-1.5,1.62,-2.1],rot:0},
+  c2:{group:'cuadro',where:q('en el cuadro','sur le tableau'),pos:[-0.85,1.62,-2.1],rot:0},
+  c3:{group:'cuadro',where:q('en el cuadro','sur le tableau'),pos:[-0.2,1.62,-2.1],rot:0},
+  puerta:{group:'puerta',where:q('encima de la puerta','au-dessus de la porte'),pos:[-3.06,2.42,0.55],rot:Math.PI/2},
+  techo:{group:'techo',where:q('en el techo','au plafond'),pos:[0.7,2.4,0.2],rot:0},
+  exterior:{group:'exterior',where:q('en el exterior','à l’extérieur'),pos:[3.75,0,0.9],rot:-Math.PI/2},
+  pared:{group:'pared',where:q('en la pared','au mur'),pos:[-3.08,1.45,-1.05],rot:Math.PI/2}
 };
 /* bornes de cada tipo, en coordenadas de la pieza (mirando hacia +z), con la dirección por la que sale el cable */
 const TERMS={
@@ -224,6 +357,7 @@ const TERMS={
   bulb:{a:{p:[-0.14,0.43,0.08],n:[0,0.3,1],l:''},b:{p:[0.14,0.43,0.08],n:[0,0.3,1],l:''}},
   pared:{a:{p:[-0.13,-0.3,0.07],n:[0,-0.5,1],l:''},b:{p:[0.13,-0.3,0.07],n:[0,-0.5,1],l:''}}
 };
+const nm=k=>tt(COMP[k].name);
 const termSet=k=>COMP[k].kind==='battery'?TERMS.battery:COMP[k].kind==='solar'?TERMS.solar:COMP[k].kind==='led'?TERMS.led:COMP[k].kind==='bulb'?TERMS.bulb:COMP[k].group==='pared'?TERMS.pared:TERMS.cuadro;
 
 /* =====================================================================
@@ -234,8 +368,15 @@ function fresh(){return {v:1,e:0,inv:{r220:1,r470:1,r560:1,r1k:1,fuse:1},placed:
 let S;
 try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){S=null}
 if(!S||S.v!==1)S=fresh();
-let saveT=null;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}},250)}
+/* idioma: el elegido aquí; si no, el de la Estación; si no, el del aparato */
+L=(function(){if(S.lang==='es'||S.lang==='fr')return S.lang;
+  try{const e=JSON.parse(localStorage.getItem('estacion-nil-v1')||'{}');if(e.lang==='es'||e.lang==='fr')return e.lang}catch(e){}
+  let n='';try{n=(navigator.languages&&navigator.languages[0])||navigator.language||''}catch(e){}
+  return /^fr/i.test(n)?'fr':'es'})();
+let saveT=null,dirty=false;
+function saveNow(){clearTimeout(saveT);dirty=false;S.at=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){dirty=true;clearTimeout(saveT);saveT=setTimeout(saveNow,250)}
+addEventListener('pagehide',()=>{if(dirty)saveNow()});   // que no se pierda lo último al volver a la Estación
 
 /* =====================================================================
    3. EL CIRCUITO: análisis nodal (cada borne es un nudo, cada cable 0,01 Ω)
@@ -355,13 +496,13 @@ function initScene(){
   box(2.05,1.15,0.05,M({map:ply}),-0.85,1.62,-2.17);
   const hz=tex(256,32,(g,w,h)=>{g.fillStyle='#f2c522';g.fillRect(0,0,w,h);g.fillStyle='#1b1b1b';for(let x=-32;x<w;x+=32){g.beginPath();g.moveTo(x,h);g.lineTo(x+16,h);g.lineTo(x+32,0);g.lineTo(x+16,0);g.fill()}});
   box(2.05,0.08,0.06,M({map:hz}),-0.85,2.24,-2.15);
-  const lab=tex(512,96,(g,w,h)=>{g.fillStyle='#b98d5b';g.fillRect(0,0,w,h);g.fillStyle='#2a1b0d';g.font='800 64px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('CUADRO · 12 V',w/2,h/2+4)});
+  const lab=tex(512,96,(g,w,h)=>{g.fillStyle='#b98d5b';g.fillRect(0,0,w,h);g.fillStyle='#2a1b0d';g.font='800 64px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t('tex.cuadro'),w/2,h/2+4)});
   const lb=new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.22),M({map:lab}));lb.position.set(-0.85,1.15,-2.14);scene.add(lb);
   // banco de trabajo
   const wood=M({color:'#7a5532'});box(2.3,0.08,0.85,wood,1.35,0.86,-1.55);[[0.3,-1.9],[2.4,-1.9],[0.3,-1.2],[2.4,-1.2]].forEach(([x,z])=>box(0.07,0.82,0.07,M({color:'#4a3420'}),x,0.41,z));
   // detalles: estantería con bidón y rótulo
   box(1.1,0.05,0.35,wood,-2.2,2.0,-2.02);box(0.32,0.45,0.22,M({color:'#9b2c22',roughness:.6}),-2.45,2.25,-2.02);
-  const stencil=tex(512,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='rgba(236,231,220,.55)';g.font='800 96px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('REFUGIO 01',w/2,h/2+6)});
+  const stencil=tex(512,128,(g,w,h)=>{g.clearRect(0,0,w,h);g.fillStyle='rgba(236,231,220,.55)';g.font='800 96px "Big Shoulders Stencil Display", Impact, sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t('tex.refugio'),w/2,h/2+6)});
   const st=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.4),new THREE.MeshStandardMaterial({map:stencil,transparent:true,roughness:1}));st.position.set(-3.09,2.55,-1.2);st.rotation.y=Math.PI/2;scene.add(st);
   // poste exterior de la placa
   box(0.1,1.0,0.1,M({color:'#5a6066',metalness:.5,roughness:.5}),3.75,0.5,0.9);
@@ -392,7 +533,7 @@ function buildComp(slot){
     add(B(0.22,0.16,0.1),mat('jbox',{color:'#2a2d31'}),0,0.62,0.36)}
   else if(c.kind==='led'){add(B(0.36,0.14,0.09),mat('ledBox',{color:'#2b3d2f'}),0,0,0);
     const lm=new THREE.MeshStandardMaterial({color:'#dfe9e3',emissive:'#f4fbff',emissiveIntensity:0,roughness:.3});const lens=add(B(0.26,0.07,0.02),lm,0,0,0.055);g.userData.lens=lens;
-    const sign=tex(256,64,(gg,w,h)=>{gg.fillStyle='#2b3d2f';gg.fillRect(0,0,w,h);gg.fillStyle='#9ee0b4';gg.font='700 30px "Share Tech Mono", monospace';gg.textAlign='center';gg.fillText('SALIDA',w/2,42)});
+    const sign=tex(256,64,(gg,w,h)=>{gg.fillStyle='#2b3d2f';gg.fillRect(0,0,w,h);gg.fillStyle='#9ee0b4';gg.font='700 30px "Share Tech Mono", monospace';gg.textAlign='center';gg.fillText(t('tex.salida'),w/2,42)});
     const sg=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.085),new THREE.MeshBasicMaterial({map:sign}));sg.position.set(0,0.13,0.0);g.add(sg)}
   else if(c.kind==='bulb'){add(C(0.012,0.012,0.36,6),mat('wire',{color:'#1b1b1b'}),0,0.22,0);add(C(0.06,0.05,0.12),mat('sock',{color:'#2a2a2a'}),0,0.0,0);
     const bm=new THREE.MeshStandardMaterial({color:'#f3eee2',emissive:'#ffc983',emissiveIntensity:0,roughness:.2,transparent:true,opacity:.92});const bl=add(new THREE.SphereGeometry(0.11,20,16),bm,0,-0.14,0);g.userData.lens=bl;
@@ -455,52 +596,68 @@ function setBuzz(on){const a=on?ac():AC;if(!a)return;if(on&&!buzzOsc){const o=a.
    6. RETOS
    ===================================================================== */
 const PASS=[
-  {id:'r1',t:'Calculo la resistencia que protege un LED con la ley de Ohm',f:'U = R × I'},
-  {id:'r2',t:'Calculo la energía que gasta un aparato y elijo una batería que llegue',f:'E = P × t'},
-  {id:'r3',t:'Encuentro un cable cortado con el multímetro en continuidad',f:'Continuidad'}];
+  {id:'r1',t:q('Calculo la resistencia que protege un LED con la ley de Ohm','Je calcule la résistance qui protège une LED avec la loi d’Ohm'),f:'U = R × I'},
+  {id:'r2',t:q('Calculo la energía que gasta un aparato y elijo una batería que llegue','Je calcule l’énergie que consomme un appareil et je choisis une batterie suffisante'),f:'E = P × t'},
+  {id:'r3',t:q('Encuentro un cable cortado con el multímetro en continuidad','Je trouve un câble coupé avec le multimètre en continuité'),f:q('Continuidad','Continuité')}];
 const ledI=()=>{const e=SOL.el.puerta;return e&&e.kind==='led'?Math.max(0,e.i):0};
 const ledOn=()=>{const e=SOL.el.puerta;return !!(e&&e.on&&S.placed.puerta&&!S.placed.puerta.dead)};
 const bulbP=()=>{const e=SOL.el.techo;return e&&e.kind==='bulb'&&!S.placed.techo.dead?e.p:0};
 const RETOS=[
- {id:'r1',name:'Luz de emergencia',
+ {id:'r1',name:q('Luz de emergencia','Éclairage de secours'),
   steps:[
    {k:'input',unit:'Ω',
-    q:'La batería da <b>12 V</b>. El LED de emergencia necesita <b>2 V</b> y aguanta como mucho <b>20 mA</b> (0,02 A). ¿Qué resistencia tienes que poner en serie para protegerlo?',
+    q:q('La batería da <b>12 V</b>. El LED de emergencia necesita <b>2 V</b> y aguanta como mucho <b>20 mA</b> (0,02 A). ¿Qué resistencia tienes que poner en serie para protegerlo?',
+        'La batterie fournit <b>12 V</b>. La LED de secours a besoin de <b>2 V</b> et supporte au maximum <b>20 mA</b> (0,02 A). Quelle résistance dois-tu mettre en série pour la protéger ?'),
     ok:v=>v>=475&&v<=525,
-    wrong:v=>Math.abs(v-600)<20?'Casi. Has usado los 12 V enteros, pero el LED ya se queda con 2 V. ¿Cuánta tensión le sobra a la resistencia?':Math.abs(v-100)<10?'Esa sería la del propio LED. La resistencia se queda con lo que sobra: 12 − 2.':Math.abs(v-0.5)<0.05||Math.abs(v-5)<0.5?'Revisa las unidades: 20 mA son 0,02 A.':'Todavía no. Prueba con una pista.',
-    hints:['La resistencia tiene que «quedarse» con la tensión que le sobra al LED: 12 V − 2 V = 10 V.','Ley de Ohm: R = U ÷ I. Divide esos 10 V entre 0,02 A.'],
-    after:'Exacto: 10 V ÷ 0,02 A = 500 Ω.',formula:'R = (12 − 2) V ÷ 0,02 A = 500 Ω',
-    mentor:'Antes de cablear nada, calculamos. Así no quemamos el LED.'},
+    wrong:v=>Math.abs(v-600)<20?q('Casi. Has usado los 12 V enteros, pero el LED ya se queda con 2 V. ¿Cuánta tensión le sobra a la resistencia?','Presque. Tu as pris les 12 V en entier, mais la LED garde déjà 2 V. Quelle tension reste-t-il pour la résistance ?')
+      :Math.abs(v-100)<10?q('Esa sería la del propio LED. La resistencia se queda con lo que sobra: 12 − 2.','Ça, ce serait celle de la LED elle-même. La résistance prend ce qui reste : 12 − 2.')
+      :Math.abs(v-0.5)<0.05||Math.abs(v-5)<0.5?q('Revisa las unidades: 20 mA son 0,02 A.','Vérifie les unités : 20 mA, c’est 0,02 A.'):TX['ans.try'],
+    hints:[q('La resistencia tiene que «quedarse» con la tensión que le sobra al LED: 12 V − 2 V = 10 V.','La résistance doit « garder » la tension dont la LED n’a pas besoin : 12 V − 2 V = 10 V.'),
+           q('Ley de Ohm: R = U ÷ I. Divide esos 10 V entre 0,02 A.','Loi d’Ohm : R = U ÷ I. Divise ces 10 V par 0,02 A.')],
+    after:q('Exacto: 10 V ÷ 0,02 A = 500 Ω.','Exact : 10 V ÷ 0,02 A = 500 Ω.'),formula:'R = (12 − 2) V ÷ 0,02 A = 500 Ω',
+    mentor:q('Antes de cablear nada, calculamos. Así no quemamos el LED.','Avant de câbler quoi que ce soit, on calcule. Comme ça, on ne grille pas la LED.')},
    {k:'action',
-    q:'En las tiendas no venden 500 Ω. En tu caja de piezas tienes <b>220, 470, 560 y 1.000 Ω</b>. Elige una, ponla en el cuadro y monta el circuito: batería <b>+</b> → interruptor → resistencia → LED <b>+</b>, y LED <b>−</b> → batería <b>−</b>. Después enciende el interruptor.',
+    q:q('En las tiendas no venden 500 Ω. En tu caja de piezas tienes <b>220, 470, 560 y 1.000 Ω</b>. Elige una, ponla en el cuadro y monta el circuito: batería <b>+</b> → interruptor → resistencia → LED <b>+</b>, y LED <b>−</b> → batería <b>−</b>. Después enciende el interruptor.',
+        'Dans le commerce, on ne trouve pas de 500 Ω. Dans ta boîte à pièces, tu as <b>220, 470, 560 et 1 000 Ω</b>. Choisis-en une, pose-la sur le tableau et monte le circuit : batterie <b>+</b> → interrupteur → résistance → LED <b>+</b>, puis LED <b>−</b> → batterie <b>−</b>. Ensuite, allume l’interrupteur.'),
     check:()=>ledOn()&&ledI()>=0.015&&ledI()<=0.0205,hold:2,
-    mentor:'Piensa cuál elegir: si la resistencia es menor de 500 Ω, pasa más corriente de la que aguanta el LED.',
-    after:'¡Luz! Con 560 Ω pasan unos 18 mA: por debajo de 20 mA y con buena luz.'}
+    mentor:q('Piensa cuál elegir: si la resistencia es menor de 500 Ω, pasa más corriente de la que aguanta el LED.','Réfléchis bien à ton choix : si la résistance fait moins de 500 Ω, il passe plus de courant que la LED ne peut en supporter.'),
+    after:q('¡Luz! Con 560 Ω pasan unos 18 mA: por debajo de 20 mA y con buena luz.','Lumière ! Avec 560 Ω, il passe environ 18 mA : en dessous de 20 mA, et ça éclaire bien.')}
   ],
   setup(){S.time=20.5}},
- {id:'r2',name:'¿Aguanta la noche?',
+ {id:'r2',name:q('¿Aguanta la noche?','Ça tient toute la nuit ?'),
   steps:[
-   {k:'action',q:'Ahora una luz para leer. Coge la <b>bombilla de 12 V y 5 W</b> de tu caja de piezas, cuélgala del techo y conéctala a la batería: un borne al <b>+</b> y el otro al <b>−</b>.',
-    check:()=>bulbP()>3,hold:1,mentor:'La bombilla gasta mucho más que el LED. Vamos a ver si la batería llega.',after:'Encendida. Ahora, a calcular.'},
-   {k:'input',unit:'Wh',q:'La noche dura <b>10 horas</b> (de 20:00 a 06:00) y la bombilla gasta <b>5 W</b>. ¿Cuánta energía necesita para toda la noche?',
-    ok:v=>Math.abs(v-50)<0.5,wrong:v=>Math.abs(v-2)<0.1||Math.abs(v-0.5)<0.05?'Eso es dividir. La energía crece cuanto más tiempo está encendida: multiplica.':Math.abs(v-15)<0.5?'Eso es sumar. La energía es potencia por tiempo.':'Todavía no. Prueba con una pista.',
-    hints:['Energía = potencia × tiempo.','5 W durante 10 h → 5 × 10 = ? Wh (vatios-hora).'],after:'Eso es: 5 W × 10 h = 50 Wh.',formula:'E = 5 W × 10 h = 50 Wh'},
-   {k:'choice',q:'La batería pequeña guarda <b>40 Wh</b> cuando está llena. ¿Aguanta toda la noche con la bombilla encendida?',choices:['Sí, aguanta','No, se queda corta'],ok:1,
-    wrong:'Fíjate: la bombilla necesita 50 Wh y la batería solo tiene 40 Wh. Se apagaría de madrugada.',after:'Bien visto: 40 Wh no llegan a 50 Wh.'},
-   {k:'action',q:'Con tu Energía, compra la <b>batería grande (120 Wh)</b> en la tienda y ponla en el banco. Los cables se quedan donde estaban.',
-    check:()=>S.placed.banco&&S.placed.banco.t==='bat_l',hold:0.2,mentor:'Una batería con más vatios-hora guarda más energía, aunque sigue dando 12 V.',after:'Batería grande en su sitio.'},
-   {k:'night',q:'Deja la bombilla encendida y pulsa <b>⏩ Pasar la noche</b>. Tiene que llegar encendida a las 06:00.',mentor:'Mira el indicador de la batería mientras pasan las horas.',after:'¡Ha aguantado toda la noche!'},
-   {k:'day',q:'De día, la <b>placa solar</b> (te la regalo) recarga la batería. Ponla en el exterior y conecta placa <b>+</b> con batería <b>+</b> y placa <b>−</b> con batería <b>−</b>. Luego pulsa <b>⏩ Pasar el día</b>.',
-    mentor:'Al mediodía es cuando más carga: el sol está más alto.',after:'Batería llena otra vez. El refugio ya vive solo de día y de noche.'}
+   {k:'action',q:q('Ahora una luz para leer. Coge la <b>bombilla de 12 V y 5 W</b> de tu caja de piezas, cuélgala del techo y conéctala a la batería: un borne al <b>+</b> y el otro al <b>−</b>.',
+                   'Maintenant, une lumière pour lire. Prends l’<b>ampoule 12 V – 5 W</b> dans ta boîte à pièces, accroche-la au plafond et branche-la sur la batterie : une borne au <b>+</b> et l’autre au <b>−</b>.'),
+    check:()=>bulbP()>3,hold:1,mentor:q('La bombilla gasta mucho más que el LED. Vamos a ver si la batería llega.','L’ampoule consomme beaucoup plus que la LED. Voyons si la batterie suffit.'),after:q('Encendida. Ahora, a calcular.','Allumée. Maintenant, on calcule.')},
+   {k:'input',unit:'Wh',q:q('La noche dura <b>10 horas</b> (de 20:00 a 06:00) y la bombilla gasta <b>5 W</b>. ¿Cuánta energía necesita para toda la noche?',
+                            'La nuit dure <b>10 heures</b> (de 20 h à 6 h) et l’ampoule consomme <b>5 W</b>. De combien d’énergie a-t-elle besoin pour toute la nuit ?'),
+    ok:v=>Math.abs(v-50)<0.5,wrong:v=>Math.abs(v-2)<0.1||Math.abs(v-0.5)<0.05?q('Eso es dividir. La energía crece cuanto más tiempo está encendida: multiplica.','Là, tu as divisé. Plus l’ampoule reste allumée, plus elle consomme d’énergie : multiplie.')
+      :Math.abs(v-15)<0.5?q('Eso es sumar. La energía es potencia por tiempo.','Là, tu as additionné. L’énergie, c’est la puissance multipliée par le temps.'):TX['ans.try'],
+    hints:[q('Energía = potencia × tiempo.','Énergie = puissance × temps.'),q('5 W durante 10 h → 5 × 10 = ? Wh (vatios-hora).','5 W pendant 10 h → 5 × 10 = ? Wh (wattheures).')],
+    after:q('Eso es: 5 W × 10 h = 50 Wh.','C’est ça : 5 W × 10 h = 50 Wh.'),formula:'E = 5 W × 10 h = 50 Wh'},
+   {k:'choice',q:q('La batería pequeña guarda <b>40 Wh</b> cuando está llena. ¿Aguanta toda la noche con la bombilla encendida?','La petite batterie stocke <b>40 Wh</b> quand elle est pleine. Tient-elle toute la nuit avec l’ampoule allumée ?'),
+    choices:[q('Sí, aguanta','Oui, elle tient'),q('No, se queda corta','Non, elle est trop juste')],ok:1,
+    wrong:q('Fíjate: la bombilla necesita 50 Wh y la batería solo tiene 40 Wh. Se apagaría de madrugada.','Regarde : l’ampoule a besoin de 50 Wh et la batterie n’en a que 40. Elle s’éteindrait avant le matin.'),
+    after:q('Bien visto: 40 Wh no llegan a 50 Wh.','Bien vu : 40 Wh, ce n’est pas assez pour 50 Wh.')},
+   {k:'action',q:q('Con tu Energía, compra la <b>batería grande (120 Wh)</b> en la tienda y ponla en el banco. Los cables se quedan donde estaban.','Avec ton Énergie, achète la <b>grande batterie (120 Wh)</b> à la boutique et pose-la sur l’établi. Les câbles restent en place.'),
+    check:()=>S.placed.banco&&S.placed.banco.t==='bat_l',hold:0.2,mentor:q('Una batería con más vatios-hora guarda más energía, aunque sigue dando 12 V.','Une batterie avec plus de wattheures stocke plus d’énergie, mais elle fournit toujours 12 V.'),after:q('Batería grande en su sitio.','Grande batterie en place.')},
+   {k:'night',q:q('Deja la bombilla encendida y pulsa <b>⏩ Pasar la noche</b>. Tiene que llegar encendida a las 06:00.','Laisse l’ampoule allumée et appuie sur <b>⏩ Passer la nuit</b>. Elle doit rester allumée jusqu’à 6 h.'),
+    mentor:q('Mira el indicador de la batería mientras pasan las horas.','Regarde l’indicateur de la batterie pendant que les heures passent.'),after:q('¡Ha aguantado toda la noche!','Elle a tenu toute la nuit !')},
+   {k:'day',q:q('De día, la <b>placa solar</b> (te la regalo) recarga la batería. Ponla en el exterior y conecta placa <b>+</b> con batería <b>+</b> y placa <b>−</b> con batería <b>−</b>. Luego pulsa <b>⏩ Pasar el día</b>.',
+                'Le jour, le <b>panneau solaire</b> (je te l’offre) recharge la batterie. Pose-le à l’extérieur et relie panneau <b>+</b> à batterie <b>+</b>, puis panneau <b>−</b> à batterie <b>−</b>. Ensuite, appuie sur <b>⏩ Passer la journée</b>.'),
+    mentor:q('Al mediodía es cuando más carga: el sol está más alto.','C’est à midi qu’il charge le plus : le soleil est au plus haut.'),after:q('Batería llena otra vez. El refugio ya vive solo de día y de noche.','Batterie de nouveau pleine. Le refuge fonctionne maintenant tout seul, jour et nuit.')}
   ],
   setup(){S.inv.bulb=(S.inv.bulb||0)+(S.placed.techo?0:1);S.time=20}},
- {id:'r3',name:'El cable cortado',
+ {id:'r3',name:q('El cable cortado','Le câble coupé'),
   steps:[
-   {k:'action',q:'Primero, comprueba que la <b>luz de emergencia</b> funciona: si la desmontaste, vuelve a montarla con su resistencia y enciéndela.',check:()=>ledOn()&&ledI()>0.008,hold:0.5,mentor:'Esta noche viene tormenta. Que la luz de emergencia esté lista.',after:'Lista.'},
-   {k:'storm',q:'Se acerca una tormenta… Pulsa <b>Seguir</b> cuando estés preparado.',mentor:'Agárrate.'},
-   {k:'action',q:'Un rayo ha dañado un cable y la luz de emergencia no enciende. Por fuera todos parecen iguales. Coge el <b>multímetro</b>, ponlo en continuidad <b>)))</b> y toca los cables uno a uno. Si pita, está bien. Si marca <b>OL</b>, está cortado.',
-    check:()=>!!S.found,hold:0,mentor:'Para medir continuidad lo mejor es apagar antes el interruptor.',after:'¡Encontrado! Ese es el cable cortado.'},
-   {k:'action',q:'Quita el cable cortado con <b>Quitar</b> y pon uno nuevo con <b>Cable</b>.',check:()=>!S.cables.some(c=>c.broken)&&ledOn()&&ledI()>0.008,hold:1,after:'Reparado. ¡Luz otra vez!'}
+   {k:'action',q:q('Primero, comprueba que la <b>luz de emergencia</b> funciona: si la desmontaste, vuelve a montarla con su resistencia y enciéndela.','D’abord, vérifie que l’<b>éclairage de secours</b> fonctionne : si tu l’as démonté, remonte-le avec sa résistance et allume-le.'),
+    check:()=>ledOn()&&ledI()>0.008,hold:0.5,mentor:q('Esta noche viene tormenta. Que la luz de emergencia esté lista.','Un orage arrive cette nuit. Il faut que l’éclairage de secours soit prêt.'),after:q('Lista.','C’est prêt.')},
+   {k:'storm',q:q('Se acerca una tormenta… Pulsa <b>Seguir</b> cuando quieras.','Un orage approche… Appuie sur <b>Continuer</b> quand tu veux.'),mentor:q('Agárrate.','Accroche-toi.')},
+   {k:'action',q:q('Un rayo ha dañado un cable y la luz de emergencia no enciende. Por fuera todos parecen iguales. Coge el <b>multímetro</b>, ponlo en continuidad <b>)))</b> y toca los cables uno a uno. Si pita, está bien. Si marca <b>OL</b>, está cortado.',
+                   'La foudre a abîmé un câble et l’éclairage de secours ne s’allume plus. De l’extérieur, ils ont tous l’air pareils. Prends le <b>multimètre</b>, mets-le en continuité <b>)))</b> et touche les câbles un par un. S’il bipe, le câble est bon. S’il affiche <b>OL</b>, il est coupé.'),
+    check:()=>!!S.found,hold:0,mentor:q('Para medir continuidad lo mejor es apagar antes el interruptor.','Pour mesurer la continuité, mieux vaut d’abord couper l’interrupteur.'),after:q('¡Encontrado! Ese es el cable cortado.','Trouvé ! C’est ce câble-là qui est coupé.')},
+   {k:'action',q:q('Quita el cable cortado con <b>Quitar</b> y pon uno nuevo con <b>Cable</b>.','Enlève le câble coupé avec <b>Retirer</b> et poses-en un neuf avec <b>Câble</b>.'),
+    check:()=>!S.cables.some(c=>c.broken)&&ledOn()&&ledI()>0.008,hold:1,after:q('Reparado. ¡Luz otra vez!','Réparé. La lumière est revenue !')}
   ],
   setup(){S.time=21}}
 ];
@@ -517,9 +674,9 @@ function nextStep(quiet){const r=reto(),st=stepObj();if(!r)return;
 function finishReto(){const r=reto();S.done[r.id]=new Date().toISOString().slice(0,10);S.e+=40;S.reto++;S.step=0;
   const p=PASS.find(x=>x.id===r.id);beep(660,.12,'triangle',.08);setTimeout(()=>beep(990,.2,'triangle',.08),130);
   const nr=reto();save();
-  modal(`<h3>Reto superado</h3><p class="muted">${esc(r.name)}</p><p class="big">+40 ⚡</p><p><b>Nuevo en tu Pasaporte:</b><br>${esc(p.t)}</p>
-    ${nr?`<p>Siguiente reto: <b>${esc(nr.name)}</b>.</p>`:`<p>Has terminado los tres retos. Ahora el refugio es tuyo: compra piezas y prueba lo que quieras.</p>`}
-    <div class="row" style="justify-content:flex-end"><button class="btn pri" id="mOk">${nr?'Al siguiente reto':'Modo libre'}</button></div>`,close=>{$('#mOk').onclick=()=>{close();if(nr){nr.setup&&nr.setup();const s0=stepObj();say(s0.mentor||'Vamos allá.')}else say('Modo libre. Ideas: un timbre en la puerta, un ventilador para el verano o dos luces con dos interruptores.');renderAll()}})}
+  modal(`<h3>${esc(t('done.title'))}</h3><p class="muted">${esc(tt(r.name))}</p><p class="big">+40 ⚡</p><p><b>${esc(t('done.pass'))}</b><br>${esc(tt(p.t))}</p>
+    ${nr?`<p>${t('done.next',{x:esc(tt(nr.name))})}</p>`:`<p>${esc(t('done.all'))}</p>`}
+    <div class="row" style="justify-content:flex-end"><button class="btn pri" id="mOk">${esc(t(nr?'done.go':'free.title'))}</button></div>`,close=>{$('#mOk').onclick=()=>{close();if(nr){nr.setup&&nr.setup();const s0=stepObj();say(s0.mentor||t('done.letsgo'))}else say(t('free.say'));renderAll()}})}
 
 /* =====================================================================
    7. SIMULACIÓN EN EL TIEMPO
@@ -531,25 +688,25 @@ function physics(dt){
   // fusibles primero, luego cables
   let changed=false;
   for(const s in S.placed){const p=S.placed[s],e=SOL.el[s];if(!e)continue;
-    if(e.kind==='fuse'&&!p.blown&&Math.abs(e.i)>COMP[p.t].rating){p.blown=true;changed=true;pop();smoke(compPos(s),8);flash(.25);toast('¡Fusible fundido! Ha protegido el circuito de un cortocircuito.','bad');say('El fusible se ha sacrificado: pasaban '+fmt(Math.abs(e.i),1)+' A. Busca dónde se juntan el + y el − sin nada en medio.');buildComp(s)}}
+    if(e.kind==='fuse'&&!p.blown&&Math.abs(e.i)>COMP[p.t].rating){p.blown=true;changed=true;pop();smoke(compPos(s),8);flash(.25);toast(t('fuse.toast'),'bad');say(t('fuse.say',{i:fmt(Math.abs(e.i),1)}));buildComp(s)}}
   if(changed)solve();changed=false;
   for(const cb of S.cables.slice()){const r=SOL.cab[cb.id];if(r&&Math.abs(r.i)>15){const A=termWorld(cb.a),B=termWorld(cb.b);smoke(A.p.clone().lerp(B.p,.5),18);pop();flash(.3);
-      S.cables=S.cables.filter(x=>x!==cb);removeCableMesh(cb.id);changed=true;toast('¡Cortocircuito! El cable se ha quemado.','bad');
-      say('Has unido el + y el − de la batería sin nada en medio: pasan cientos de amperios. En la vida real eso quema cables y provoca incendios. Pon un fusible en el camino.')}}
+      S.cables=S.cables.filter(x=>x!==cb);removeCableMesh(cb.id);changed=true;toast(t('short.toast'),'bad');
+      say(t('short.say'))}}
   if(changed)solve();
   // LED: se quema si se pasa de corriente
   const lp=S.placed.puerta,le=SOL.el.puerta;
   if(lp&&le&&le.kind==='led'&&!lp.dead){const I=Math.max(0,le.i);
     if(I>0.03){burnLed(I)}else if(I>0.0205){ledStress+=dt;if(ledStress>3)burnLed(I)}else ledStress=Math.max(0,ledStress-dt)}
-  const bp=S.placed.techo,be=SOL.el.techo;if(bp&&be&&!bp.dead&&be.p>10){bp.dead=true;pop();smoke(compPos('techo'),10);toast('La bombilla se ha fundido: le llegaba demasiada tensión.','bad');buildComp('techo');solve()}
+  const bp=S.placed.techo,be=SOL.el.techo;if(bp&&be&&!bp.dead&&be.p>10){bp.dead=true;pop();smoke(compPos('techo'),10);toast(t('bulb.dead'),'bad');buildComp('techo');solve()}
   // baterías: energía que entra y sale
   if(lapse){const dh=dt*lapse.rate;
     for(const s in S.placed){const p=S.placed[s],e=SOL.el[s];if(e&&e.kind==='battery'){p.wh=clamp((p.wh||0)+e.v*e.i*dh/1,0,COMP[p.t].cap)}}}
 }
 function burnLed(I){const lp=S.placed.puerta;lp.dead=true;ledStress=0;S.stats.ledsQuemados++;pop();smoke(compPos('puerta'),16);flash(.15);buildComp('puerta');solve();
-  toast('¡El LED se ha quemado!','bad');
-  say(`Pasaban ${fmt(I*1000,0)} mA y el LED aguanta 20 mA. ${I>0.03?'Con tanta corriente se quema enseguida.':'Un poco por encima también lo estropea, solo que tarda más.'} ${S.reto===0?'Te dejo un LED nuevo: con Montar, toca el LED quemado y se cambia. Fíjate en la resistencia.':''}`);
-  if(S.reto===0)S.inv.led=(S.inv.led||0)+1;else if(!S.inv.led)say('Puedes comprar otro LED en la tienda.');
+  toast(t('led.toast'),'bad');
+  say(t('led.say',{ma:fmt(I*1000,0)})+' '+t(I>0.03?'led.fast':'led.slow')+(S.reto===0?' '+t('led.spare'):''));
+  if(S.reto===0)S.inv.led=(S.inv.led||0)+1;else if(!S.inv.led)say(t('led.buy'));
   save();renderSide()}
 
 /* =====================================================================
@@ -574,66 +731,66 @@ function onTap(x,y){ac();const u=pick(x,y);
     if(u&&u.type==='slot'&&selItem){place(u.slot,selItem);return}
     if(u&&(u.type==='comp'||u.type==='term')){const slot=u.slot||meshes.terms[u.id].slot;const p=S.placed[slot];
       if(p&&COMP[p.t].kind==='switch'){p.on=!p.on;beep(p.on?880:440,.05,'square',.05);buildComp(slot);save();solve();return}
-      if(p&&p.dead){if(S.inv[p.t]>0){S.inv[p.t]--;S.placed[slot]={t:p.t};buildComp(slot);S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(buildCable);save();solve();toast(COMP[p.t].name+' nuevo en su sitio.','good');renderSide()}else hint('Está quemado y no te quedan de repuesto. Cómpralo en la tienda.');return}
-      if(p&&COMP[p.t].kind==='fuse'&&p.blown){if(S.inv.fuse>0){S.inv.fuse--;p.blown=false;buildComp(slot);save();toast('Fusible cambiado.','good');renderSide()}else hint('No te quedan fusibles. Cómpralos en la tienda.');return}
-      if(p){hint(`${COMP[p.t].name}${p.dead?' (quemado)':''}. Para quitarla, usa la herramienta Quitar.`);return}}
-    if(selItem)hint('Toca uno de los huecos iluminados.');else hint('Elige una pieza de tu caja de piezas y luego toca dónde ponerla.');return}
+      if(p&&p.dead){if(S.inv[p.t]>0){S.inv[p.t]--;S.placed[slot]={t:p.t};buildComp(slot);S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(buildCable);save();solve();toast(t('new.toast',{x:nm(p.t)}),'good');renderSide()}else hint(t('dead.nospare'));return}
+      if(p&&COMP[p.t].kind==='fuse'&&p.blown){if(S.inv.fuse>0){S.inv.fuse--;p.blown=false;buildComp(slot);save();toast(t('fuse.changed'),'good');renderSide()}else hint(t('fuse.none'));return}
+      if(p){hint(t('comp.info',{x:nm(p.t)}));return}}
+    hint(t(selItem?'mont.slot':'mont.pick'));return}
   if(tool==='cable'){
-    if(!u||u.type!=='term'){hint(cableA?'Toca el segundo borne.':'Toca un borne: las bolitas doradas, rojas (+) o negras (−).');return}
-    if(!cableA){cableA=u.id;highlight();hint('Ahora toca el borne donde va el otro extremo.');beep(700,.04,'sine',.04);return}
-    if(cableA===u.id){cableA=null;highlight();hint('Cable cancelado.');return}
+    if(!u||u.type!=='term'){hint(t(cableA?'cab.second':'cab.first'));return}
+    if(!cableA){cableA=u.id;highlight();hint(t('cab.next'));beep(700,.04,'sine',.04);return}
+    if(cableA===u.id){cableA=null;highlight();hint(t('cab.cancel'));return}
     const a=cableA,b=u.id;cableA=null;highlight();
-    if(S.cables.some(c=>(c.a===a&&c.b===b)||(c.a===b&&c.b===a))){hint('Esos dos bornes ya están unidos.');return}
-    const cb={id:S.nextId++,a,b,broken:false};S.cables.push(cb);buildCable(cb);beep(900,.05,'sine',.05);save();solve();hint('Cable puesto. Toca otro borne para seguir cableando.');return}
+    if(S.cables.some(c=>(c.a===a&&c.b===b)||(c.a===b&&c.b===a))){hint(t('cab.dup'));return}
+    const cb={id:S.nextId++,a,b,broken:false};S.cables.push(cb);buildCable(cb);beep(900,.05,'sine',.05);save();solve();hint(t('cab.done'));return}
   if(tool==='quitar'){
     if(u&&u.type==='cable'){const cb=S.cables.find(c=>c.id===u.id);S.cables=S.cables.filter(c=>c.id!==u.id);removeCableMesh(u.id);beep(300,.06,'sawtooth',.04);
-      if(cb&&cb.broken)toast('Cable cortado retirado.','good');save();solve();hint('Cable quitado.');return}
+      if(cb&&cb.broken)toast(t('cab.brokenOut'),'good');save();solve();hint(t('cab.removed'));return}
     const slot=u&&(u.slot||(u.type==='term'&&meshes.terms[u.id].slot));
     if(slot&&S.placed[slot]){removeComp(slot);return}
-    hint('Toca un cable o una pieza para quitarla.');return}
+    hint(t('quit.what'));return}
   if(tool==='medir')measure(u)}
-function place(slot,k){const c=COMP[k],sl=SLOTS[slot];if(sl.group!==c.group){hint(`Esa pieza va en ${SLOTS[Object.keys(SLOTS).find(s=>SLOTS[s].group===c.group)].label}.`);return}
-  if(!(S.inv[k]>0)){hint('No te quedan de esas.');return}
+function place(slot,k){const c=COMP[k],sl=SLOTS[slot];if(sl.group!==c.group){hint(t('place.where',{w:tt(SLOTS[Object.keys(SLOTS).find(s=>SLOTS[s].group===c.group)].where)}));return}
+  if(!(S.inv[k]>0)){hint(t('place.none'));return}
   const prev=S.placed[slot];
-  if(prev&&COMP[prev.t].kind!==c.kind){hint('Ese hueco está ocupado. Quita antes lo que hay.');return}
+  if(prev&&COMP[prev.t].kind!==c.kind){hint(t('place.busy'));return}
   if(prev&&!prev.dead)S.inv[prev.t]=(S.inv[prev.t]||0)+1;
   S.inv[k]--;S.placed[slot]={t:k};if(c.kind==='battery')S.placed[slot].wh=c.cap;if(c.kind==='switch')S.placed[slot].on=false;
   selItem=S.inv[k]>0?selItem:null;
   buildComp(slot);highlight();S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(buildCable);
-  beep(520,.06,'triangle',.06);save();solve();renderSide();updateMarkers();hint(`${c.name} colocada.`)}
+  beep(520,.06,'triangle',.06);save();solve();renderSide();updateMarkers();hint(t('place.done',{x:tt(c.name)}))}
 function removeComp(slot){const p=S.placed[slot];if(!p)return;delete S.placed[slot];
-  if(!p.dead)S.inv[p.t]=(S.inv[p.t]||0)+1;else toast('Pieza quemada a la basura.','');
+  if(!p.dead)S.inv[p.t]=(S.inv[p.t]||0)+1;else toast(t('rem.trash'),'');
   S.cables.filter(cb=>cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')).forEach(cb=>removeCableMesh(cb.id));
   S.cables=S.cables.filter(cb=>!(cb.a.startsWith(slot+'.')||cb.b.startsWith(slot+'.')));
-  buildComp(slot);beep(300,.06,'sawtooth',.04);save();solve();renderSide();hint(`${COMP[p.t].name} retirada, con sus cables.`)}
-function lcd(mode,val){$('#lcdMode').textContent={V:'V⎓',A:'A · pinza',R:'Ω',C:'))) continuidad'}[mode];$('#lcdVal').textContent=val}
+  buildComp(slot);beep(300,.06,'sawtooth',.04);save();solve();renderSide();hint(t('rem.done',{x:nm(p.t)}))}
+function lcd(mode,val){$('#lcdMode').textContent={V:'V⎓',A:t('lcd.A'),R:'Ω',C:t('lcd.C')}[mode];$('#lcdVal').textContent=val}
 function measure(u){
-  if(meterMode==='V'){if(!u||u.type!=='term'){hint('En voltios: toca un borne con la punta roja y otro con la negra.');return}
-    if(!probe){probe=u.id;highlight();lcd('V','· · ·');hint('Punta roja puesta. Ahora toca otro borne con la negra.');beep(700,.03,'sine',.03);return}
+  if(meterMode==='V'){if(!u||u.type!=='term'){hint(t('m.V.what'));return}
+    if(!probe){probe=u.id;highlight();lcd('V','· · ·');hint(t('m.V.red'));beep(700,.03,'sine',.03);return}
     const v=(SOL.nodes[probe]||0)-(SOL.nodes[u.id]||0);probe=null;highlight();lcd('V',(Math.abs(v)<0.005?'0.00':v.toFixed(2))+' V');beep(1200,.03,'sine',.03);
-    hint(Math.abs(v)<0.01?'0 V: entre esos dos puntos no hay diferencia de tensión.':`Hay ${fmt(Math.abs(v),2)} V entre esos dos bornes.`);return}
-  if(meterMode==='A'){if(!u||u.type!=='cable'){hint('Con la pinza: toca un cable y te digo cuánta corriente pasa.');return}
+    hint(Math.abs(v)<0.01?t('m.V.zero'):t('m.V.val',{v:fmt(Math.abs(v),2)}));return}
+  if(meterMode==='A'){if(!u||u.type!=='cable'){hint(t('m.A.what'));return}
     const r=SOL.cab[u.id],I=r?Math.abs(r.i):0;lcd('A',I<1?(I*1000).toFixed(1)+' mA':I.toFixed(2)+' A');beep(1200,.03,'sine',.03);
-    hint(I<1e-4?'No pasa corriente por ese cable.':`Por ese cable pasan ${I<1?fmt(I*1000,1)+' mA':fmt(I,2)+' A'}.`);return}
-  if(meterMode==='R'){const slot=u&&(u.slot||(u.type==='term'&&meshes.terms[u.id].slot));if(!slot||!S.placed[slot]){hint('En ohmios: toca una pieza (mejor con el circuito apagado).');return}
+    hint(I<1e-4?t('m.A.zero'):t('m.A.val',{i:I<1?fmt(I*1000,1)+' mA':fmt(I,2)+' A'}));return}
+  if(meterMode==='R'){const slot=u&&(u.slot||(u.type==='term'&&meshes.terms[u.id].slot));if(!slot||!S.placed[slot]){hint(t('m.R.what'));return}
     const p=S.placed[slot],c=COMP[p.t],e=SOL.el[slot];
-    if(c.kind==='battery'||c.kind==='solar'){lcd('R','– – –');hint('No se mide la resistencia de una batería ni de una placa: dan tensión y estropearían la lectura.');return}
-    if(e&&Math.abs(e.i)>0.001){lcd('R','ERR');hint('Esa pieza tiene corriente. Apaga el interruptor antes de medir ohmios.');return}
+    if(c.kind==='battery'||c.kind==='solar'){lcd('R','– – –');hint(t('m.R.src'));return}
+    if(e&&Math.abs(e.i)>0.001){lcd('R','ERR');hint(t('m.R.live'));return}
     let val;if(c.kind==='res'||c.kind==='bulb'||c.kind==='fan'||c.kind==='buzzer')val=p.dead?'OL':(c.R*(1+((slot.charCodeAt(1)||3)%5-2)*0.004)).toFixed(1)+' Ω';
     else if(c.kind==='switch')val=p.on?'0.0 Ω':'OL';else if(c.kind==='fuse')val=p.blown?'OL':'0.0 Ω';else if(c.kind==='led')val='OL';
-    lcd('R',val);beep(1200,.03,'sine',.03);hint(c.kind==='led'?'Un LED no se mide así: solo deja pasar corriente en un sentido.':val==='OL'?'OL: el circuito está abierto ahí dentro.':`${c.name}: ${val}.`);return}
-  if(meterMode==='C'){if(!u||(u.type!=='cable'&&u.type!=='comp')){hint('En continuidad: toca un cable. Si pita, está bien.');return}
-    if(u.type==='cable'){const cb=S.cables.find(c=>c.id===u.id);if(cb.broken){lcd('C','OL');beep(140,.15,'sine',.03);S.found=true;hint('OL y sin pitido: ¡este cable está cortado por dentro!');save()}
-      else{lcd('C','0.0 Ω');beep(2600,.35,'square',.06);hint('Pita: este cable está bien.')}return}
-    const slot=u.slot,p=S.placed[slot],c=COMP[p.t];const okc=(c.kind==='fuse'&&!p.blown)||(c.kind==='switch'&&p.on);lcd('C',okc?'0.0 Ω':'OL');if(okc)beep(2600,.35,'square',.06);hint(okc?'Pita: pasa la corriente.':'No pita: ahí el circuito está abierto.')}}
+    lcd('R',val);beep(1200,.03,'sine',.03);hint(c.kind==='led'?t('m.R.led'):val==='OL'?t('m.R.ol'):t('m.R.val',{x:tt(c.name),v:val}));return}
+  if(meterMode==='C'){if(!u||(u.type!=='cable'&&u.type!=='comp')){hint(t('m.C.what'));return}
+    if(u.type==='cable'){const cb=S.cables.find(c=>c.id===u.id);if(cb.broken){lcd('C','OL');beep(140,.15,'sine',.03);S.found=true;hint(t('m.C.broken'));save()}
+      else{lcd('C','0.0 Ω');beep(2600,.35,'square',.06);hint(t('m.C.ok'))}return}
+    const slot=u.slot,p=S.placed[slot],c=COMP[p.t];const okc=(c.kind==='fuse'&&!p.blown)||(c.kind==='switch'&&p.on);lcd('C',okc?'0.0 Ω':'OL');if(okc)beep(2600,.35,'square',.06);hint(t(okc?'m.C.pass':'m.C.open'))}}
 let hintT=null;function hint(t){$('#hint').textContent=t;clearTimeout(hintT);hintT=setTimeout(()=>{$('#hint').textContent=baseHint()},5200)}
-function baseHint(){if(tool==='montar')return selItem?`Coloca: ${COMP[selItem].name}. Toca un hueco iluminado.`:'Montar: elige una pieza de tu caja. Toca el interruptor para encenderlo.';
-  if(tool==='cable')return cableA?'Toca el segundo borne.':'Cable: toca un borne y después otro.';
-  if(tool==='medir')return {V:'Voltios: borne con la punta roja y otro con la negra.',A:'Pinza: toca un cable.',R:'Ohmios: toca una pieza apagada.',C:'Continuidad: toca un cable. Si pita, está bien.'}[meterMode];
-  return 'Quitar: toca un cable o una pieza.'}
+function baseHint(){if(tool==='montar')return selItem?t('b.mont.sel',{x:nm(selItem)}):t('b.mont');
+  if(tool==='cable')return t(cableA?'cab.second':'b.cab');
+  if(tool==='medir')return t({V:'b.V',A:'b.A',R:'b.R',C:'m.C.what'}[meterMode]);
+  return t('b.quit')}
 let toastT=null;function toast(t,kind){const e=$('#toast');e.textContent=t;e.className='toast '+(kind||'');e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>e.hidden=true,3200)}
 function flash(o){const f=$('#flash');f.style.opacity=o;setTimeout(()=>f.style.opacity=0,90)}
-function say(t){$('#mentorTxt').textContent=t}
+function say(x){$('#mentorTxt').textContent=tt(x)}
 function highlight(){const base=tool==='cable'||(tool==='medir'&&meterMode==='V')?0.35:0;for(const id in meshes.terms){const m=meshes.terms[id].mesh;m.material.emissiveIntensity=(id===cableA||id===probe)?1.2:base}}
 function updateMarkers(){for(const id in meshes.markers){const mk=meshes.markers[id];const ok=tool==='montar'&&selItem&&SLOTS[id].group===COMP[selItem].group&&(!S.placed[id]||COMP[S.placed[id].t].kind===COMP[selItem].kind);mk.visible=!!ok;mk.material.opacity=ok?0.28:0}}
 function setTool(t){tool=t;cableA=null;probe=null;$$('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));$('#meter').hidden=t!=='medir';if(t!=='montar'){selItem=null;renderSide()}highlight();updateMarkers();$('#hint').textContent=baseHint()}
@@ -666,49 +823,49 @@ const ICON={battery:'<svg viewBox="0 0 30 30"><rect x="4" y="9" width="22" heigh
  buzzer:'<svg viewBox="0 0 30 30"><circle cx="15" cy="15" r="9" fill="#1b1b1b"/><circle cx="15" cy="15" r="2" fill="#555"/><path d="M26 10a8 8 0 0 1 0 10" stroke="#ffb13b" stroke-width="2" fill="none"/></svg>'};
 const icon=k=>{const c=COMP[k];let s=ICON[c.kind]||'';if(c.kind==='res')s=s.replace('stroke="BANDS"',`stroke="${c.bands[0]}"`);return s};
 function renderReto(){const r=reto(),box=$('#reto');
-  if(!r){box.innerHTML=`<h2><small>Retos superados: 3 de 3</small>Modo libre</h2><p class="q">El refugio es tuyo. Compra piezas en la tienda y prueba combinaciones. Algunas ideas:</p>
-    <ul class="list"><li class="item"><span class="tx"><b>Un timbre</b><small>Zumbador en la pared con su propio interruptor.</small></span></li><li class="item"><span class="tx"><b>Dos luces, dos interruptores</b><small>Cada luz con su hueco en el cuadro.</small></span></li><li class="item"><span class="tx"><b>Un fusible que proteja todo</b><small>Ponlo justo después del + de la batería.</small></span></li></ul>`;return}
+  if(!r){box.innerHTML=`<h2><small>${esc(t('free.sub'))}</small>${esc(t('free.title'))}</h2><p class="q">${esc(t('free.q'))}</p>
+    <ul class="list">${[1,2,3].map(i=>`<li class="item"><span class="tx"><b>${esc(t('free.i'+i))}</b><small>${esc(t('free.d'+i))}</small></span></li>`).join('')}</ul>`;return}
   const st=stepObj();
   const dots=r.steps.map((x,i)=>`<i class="${i<S.step?'done':i===S.step?'now':''}"></i>`).join('');
   let ctl='';
-  if(st.k==='input')ctl=`<form class="answer" id="ansF" autocomplete="off"><label for="ans"><input id="ans" inputmode="decimal" placeholder="?" aria-label="Tu respuesta en ${esc(st.unit)}"><span>${esc(st.unit)}</span></label><button class="btn pri" type="submit">Comprobar</button></form>
-    <div class="row"><button class="btn sm" id="hintB" type="button">${hintN<st.hints.length?'Dame una pista':'Sin más pistas'}</button></div><div id="hintsBox">${st.hints.slice(0,hintN).map(h=>`<p class="fb">💡 ${esc(h)}</p>`).join('')}</div><p class="fb" id="fb"></p>`;
-  else if(st.k==='choice')ctl=`<div class="row">${st.choices.map((c,i)=>`<button class="btn" data-ch="${i}">${esc(c)}</button>`).join('')}</div><p class="fb" id="fb"></p>`;
-  else if(st.k==='storm')ctl=`<div class="row"><button class="btn pri" id="stormB">Seguir</button></div>`;
-  else if(st.k==='night'||st.k==='day')ctl=`<p class="fb" id="fb">Usa el botón ⏩ de arriba, junto a la hora.</p>`;
-  else ctl=`<p class="fb" id="fb">${S.reto===0&&S.step===1?'Usa las herramientas de abajo: Montar, Cable, Medir y Quitar.':''}</p>`;
-  box.innerHTML=`<h2><small>Reto ${S.reto+1} de ${RETOS.length} · paso ${S.step+1} de ${r.steps.length}</small>${esc(r.name)}</h2><div class="steps">${dots}</div><p class="q">${st.q}</p>${ctl}`;
-  const f=$('#ansF');if(f){f.onsubmit=e=>{e.preventDefault();let raw=String($('#ans').value).replace(/\s/g,'');if(/^\d{1,3}(\.\d{3})+$/.test(raw))raw=raw.replace(/\./g,'');const v=parseFloat(raw.replace(',','.'));if(!isFinite(v)){$('#fb').textContent='Escribe un número.';return}
-      if(st.ok(v)){$('#fb').className='fb good';$('#fb').innerHTML=esc(st.after)+(st.formula?`<br><span class="formula">${esc(st.formula)}</span>`:'');beep(880,.1,'triangle',.07);setTimeout(()=>{say(st.after);nextStep(true)},1800);$('#ansF').querySelector('button').disabled=true}
-      else{tries++;$('#fb').className='fb bad';$('#fb').textContent=st.wrong(v);beep(200,.12,'sawtooth',.04);if(tries>=2&&hintN<st.hints.length){hintN++;renderReto();$('#fb').className='fb bad';$('#fb').textContent=st.wrong(v)}}};
+  if(st.k==='input')ctl=`<form class="answer" id="ansF" autocomplete="off"><label for="ans"><input id="ans" inputmode="decimal" placeholder="?" aria-label="${esc(t('ans.aria',{u:st.unit}))}"><span>${esc(st.unit)}</span></label><button class="btn pri" type="submit">${esc(t('ans.check'))}</button></form>
+    <div class="row"><button class="btn sm" id="hintB" type="button">${esc(t(hintN<st.hints.length?'ans.hint':'ans.nohint'))}</button></div><div id="hintsBox">${st.hints.slice(0,hintN).map(h=>`<p class="fb">💡 ${esc(tt(h))}</p>`).join('')}</div><p class="fb" id="fb"></p>`;
+  else if(st.k==='choice')ctl=`<div class="row">${st.choices.map((c,i)=>`<button class="btn" data-ch="${i}">${esc(tt(c))}</button>`).join('')}</div><p class="fb" id="fb"></p>`;
+  else if(st.k==='storm')ctl=`<div class="row"><button class="btn pri" id="stormB">${esc(t('storm.go'))}</button></div>`;
+  else if(st.k==='night'||st.k==='day')ctl=`<p class="fb" id="fb">${esc(t('time.fb'))}</p>`;
+  else ctl=`<p class="fb" id="fb">${S.reto===0&&S.step===1?esc(t('tools.fb')):''}</p>`;
+  box.innerHTML=`<h2><small>${esc(t('reto.head',{a:S.reto+1,b:RETOS.length,c:S.step+1,d:r.steps.length}))}</small>${esc(tt(r.name))}</h2><div class="steps">${dots}</div><p class="q">${tt(st.q)}</p>${ctl}`;
+  const f=$('#ansF');if(f){f.onsubmit=e=>{e.preventDefault();let raw=String($('#ans').value).replace(/\s/g,'');if(/^\d{1,3}(\.\d{3})+$/.test(raw))raw=raw.replace(/\./g,'');const v=parseFloat(raw.replace(',','.'));if(!isFinite(v)){$('#fb').textContent=t('ans.nan');return}
+      if(st.ok(v)){$('#fb').className='fb good';$('#fb').innerHTML=esc(tt(st.after))+(st.formula?`<br><span class="formula">${esc(st.formula)}</span>`:'');beep(880,.1,'triangle',.07);setTimeout(()=>{say(st.after);nextStep(true)},1800);$('#ansF').querySelector('button').disabled=true}
+      else{tries++;$('#fb').className='fb bad';$('#fb').textContent=tt(st.wrong(v));beep(200,.12,'sawtooth',.04);if(tries>=2&&hintN<st.hints.length){hintN++;renderReto();$('#fb').className='fb bad';$('#fb').textContent=tt(st.wrong(v))}}};
     $('#hintB').onclick=()=>{if(hintN<st.hints.length){hintN++;renderReto()}}}
-  $$('#reto [data-ch]').forEach(b=>b.onclick=()=>{const i=+b.dataset.ch;if(i===st.ok){$('#fb').className='fb good';$('#fb').textContent=st.after;beep(880,.1,'triangle',.07);$$('#reto [data-ch]').forEach(x=>x.disabled=true);setTimeout(()=>{say(st.after);nextStep(true)},1600)}else{$('#fb').className='fb bad';$('#fb').textContent=st.wrong;beep(200,.12,'sawtooth',.04)}});
+  $$('#reto [data-ch]').forEach(b=>b.onclick=()=>{const i=+b.dataset.ch;if(i===st.ok){$('#fb').className='fb good';$('#fb').textContent=tt(st.after);beep(880,.1,'triangle',.07);$$('#reto [data-ch]').forEach(x=>x.disabled=true);setTimeout(()=>{say(st.after);nextStep(true)},1600)}else{$('#fb').className='fb bad';$('#fb').textContent=tt(st.wrong);beep(200,.12,'sawtooth',.04)}});
   const sb=$('#stormB');if(sb)sb.onclick=storm}
 function renderInv(){const keys=Object.keys(COMP).filter(k=>S.inv[k]>0);
-  $('#inv').innerHTML=keys.length?keys.map(k=>`<li class="item ${selItem===k?'sel':''}"><button class="pick" data-k="${k}" aria-pressed="${selItem===k}"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(COMP[k].name)}</b><small>${esc(COMP[k].desc)}</small></span></button><span class="n">×${S.inv[k]}</span></li>`).join(''):'<li class="item"><span class="tx"><small>La caja está vacía. Quita piezas o compra en la tienda.</small></span></li>';
+  $('#inv').innerHTML=keys.length?keys.map(k=>`<li class="item ${selItem===k?'sel':''}"><button class="pick" data-k="${k}" aria-pressed="${selItem===k}"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(nm(k))}</b><small>${esc(tt(COMP[k].desc))}</small></span></button><span class="n">×${S.inv[k]}</span></li>`).join(''):`<li class="item"><span class="tx"><small>${esc(t('inv.empty'))}</small></span></li>`;
   $$('#inv [data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(tool!=='montar')setTool('montar');selItem=selItem===k?null:k;renderInv();updateMarkers();$('#hint').textContent=baseHint();if(selItem&&innerWidth<900)$('#stage').scrollIntoView({behavior:'smooth',block:'start'})});
   const unlocked=k=>{const u=COMP[k].unlock;return !u||u==='free'&&S.reto>=RETOS.length||u==='r2'&&S.reto>=1};
   const shopK=Object.keys(COMP).filter(k=>COMP[k].price);
-  $('#shop').innerHTML=shopK.map(k=>{const ok=unlocked(k);return `<li class="item"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(COMP[k].name)}</b><small>${ok?esc(COMP[k].desc):COMP[k].unlock==='r2'?'Se desbloquea en el reto 2':'Se desbloquea al terminar los retos'}</small></span><button class="price" data-buy="${k}" ${ok&&S.e>=COMP[k].price?'':'disabled'} aria-label="Comprar ${esc(COMP[k].name)} por ${COMP[k].price} de Energía">${COMP[k].price} ⚡</button></li>`}).join('');
-  $$('#shop [data-buy]').forEach(b=>b.onclick=()=>{const k=b.dataset.buy;if(S.e<COMP[k].price)return;S.e-=COMP[k].price;S.inv[k]=(S.inv[k]||0)+1;selItem=k;if(tool!=='montar')setTool('montar');beep(1040,.08,'triangle',.07);toast(`${COMP[k].name} comprada. Ahora toca su sitio en el refugio.`,'good');save();renderSide();updateMarkers();$('#hint').textContent=baseHint()})}
-function renderPass(){$('#pass').innerHTML=PASS.map((p,i)=>`<li class="${S.done[p.id]?'got':''}"><span class="seal">${S.done[p.id]?'✓':i+1}</span><span><b>${esc(p.t)}</b><small>${S.done[p.id]?'Demostrado en El Refugio · '+new Date(S.done[p.id]+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}):'Pendiente · '+esc(p.f)}</small></span></li>`).join('')}
+  $('#shop').innerHTML=shopK.map(k=>{const ok=unlocked(k);return `<li class="item"><span class="ic">${icon(k)}</span><span class="tx"><b>${esc(nm(k))}</b><small>${esc(ok?tt(COMP[k].desc):t(COMP[k].unlock==='r2'?'shop.lock2':'shop.lockEnd'))}</small></span><button class="price" data-buy="${k}" ${ok&&S.e>=COMP[k].price?'':'disabled'} aria-label="${esc(t('shop.aria',{x:nm(k),p:COMP[k].price}))}">${COMP[k].price} ⚡</button></li>`}).join('');
+  $$('#shop [data-buy]').forEach(b=>b.onclick=()=>{const k=b.dataset.buy;if(S.e<COMP[k].price)return;S.e-=COMP[k].price;S.inv[k]=(S.inv[k]||0)+1;selItem=k;if(tool!=='montar')setTool('montar');beep(1040,.08,'triangle',.07);toast(t('shop.bought',{x:nm(k)}),'good');save();renderSide();updateMarkers();$('#hint').textContent=baseHint()})}
+function renderPass(){$('#pass').innerHTML=PASS.map((p,i)=>`<li class="${S.done[p.id]?'got':''}"><span class="seal">${S.done[p.id]?'✓':i+1}</span><span><b>${esc(tt(p.t))}</b><small>${esc(S.done[p.id]?t('pass.done',{d:new Date(S.done[p.id]+'T12:00').toLocaleDateString(LOC(),{day:'numeric',month:'long'})}):t('pass.todo',{f:tt(p.f)}))}</small></span></li>`).join('')}
 function renderSide(){renderReto();renderInv();renderPass();$('#energy').textContent='⚡ '+S.e}
 function renderAll(){renderSide();renderTimeBtn();renderClock()}
 
 /* tiempo: noche, día, tormenta */
 function renderClock(){const h=((S.time%24)+24)%24,hh=Math.floor(h),mm=Math.floor((h-hh)*60);$('#clock').textContent=`${sunAt(h)>0?'☀':'☾'} ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`}
 function renderTimeBtn(){const st=stepObj(),b=$('#btnTime');const free=!reto();
-  if(st&&st.k==='night'){b.hidden=false;b.textContent='⏩ Pasar la noche'}else if(st&&st.k==='day'){b.hidden=false;b.textContent='⏩ Pasar el día'}else if(free){b.hidden=false;b.textContent=sunAt(S.time)>0?'⏩ Hasta la noche':'⏩ Hasta el día'}else b.hidden=true;
+  if(st&&st.k==='night'){b.hidden=false;b.textContent=t('time.night')}else if(st&&st.k==='day'){b.hidden=false;b.textContent=t('time.day')}else if(free){b.hidden=false;b.textContent=t(sunAt(S.time)>0?'time.toNight':'time.toDay')}else b.hidden=true;
   b.disabled=!!lapse}
 $('#btnTime').onclick=()=>{ac();if(lapse)return;const st=stepObj();
-  if(st&&st.k==='night'){if(!(bulbP()>3)){toast('Primero enciende la bombilla.','bad');return}S.time=20;lapse={to:30,rate:1.1,kind:'night'};say('Pasan las horas… mira la batería.')}
-  else if(st&&st.k==='day'){if(!S.placed.exterior){toast('Primero pon la placa solar en el exterior.','bad');return}const v=SOL.el.exterior;S.time=6;lapse={to:20,rate:1.3,kind:'day',max:0};say('Sale el sol. Cuanto más alto está, más carga.')}
+  if(st&&st.k==='night'){if(!(bulbP()>3)){toast(t('night.need'),'bad');return}S.time=20;lapse={to:30,rate:1.1,kind:'night'};say(t('night.go'))}
+  else if(st&&st.k==='day'){if(!S.placed.exterior){toast(t('day.need'),'bad');return}const v=SOL.el.exterior;S.time=6;lapse={to:20,rate:1.3,kind:'day',max:0};say(t('day.go'))}
   else{const h=((S.time%24)+24)%24;S.time=h;lapse={to:h>=6&&h<20?20:(h<6?6:30),rate:1.2,kind:'free'}}
   renderTimeBtn()};
 function endLapse(){const k=lapse.kind,mx=lapse.max;lapse=null;S.time=((S.time%24)+24)%24;renderTimeBtn();
   const st=stepObj();
-  if(k==='night'&&st&&st.k==='night'){if(bulbP()>3){nextStep()}else{const p=S.placed.banco;toast('La luz se apagó antes de las 06:00.','bad');say('La batería se ha vaciado antes de que amaneciera. Te la recargo con el generador para que lo intentes otra vez.');if(p)p.wh=COMP[p.t].cap;S.time=20;save()}}
-  if(k==='day'&&st&&st.k==='day'){const p=S.placed.banco;const soc=p?p.wh/COMP[p.t].cap:0;if(soc>=0.95&&mx>0.5){nextStep()}else{toast(mx>0.5?'La batería no se ha llenado.':'La placa no ha cargado nada: revisa sus cables.','bad');say(mx>0.5?'Ha cargado algo, pero no lo bastante. ¿Hay algo gastando mucho durante el día?':'No ha entrado corriente desde la placa. Comprueba que su + va al + de la batería y su − al −.');S.time=6;save()}}
+  if(k==='night'&&st&&st.k==='night'){if(bulbP()>3){nextStep()}else{const p=S.placed.banco;toast(t('night.fail'),'bad');say(t('night.failSay'));if(p)p.wh=COMP[p.t].cap;S.time=20;save()}}
+  if(k==='day'&&st&&st.k==='day'){const p=S.placed.banco;const soc=p?p.wh/COMP[p.t].cap:0;if(soc>=0.95&&mx>0.5){nextStep()}else{toast(t(mx>0.5?'day.notfull':'day.nothing'),'bad');say(t(mx>0.5?'day.some':'day.none'));S.time=6;save()}}
   renderAll()}
 function storm(){flash(.9);thunder();setTimeout(()=>flash(.6),220);setTimeout(()=>{flash(.8);thunder()},900);
   solve();const curr=c=>{const r=SOL.cab[c.id];return r?Math.abs(r.i):0};let cand=S.cables.filter(c=>curr(c)>0.005&&curr(c)<0.05);if(!cand.length)cand=S.cables.filter(c=>curr(c)>0.005);const cb=cand.length?cand[Math.floor(Math.random()*cand.length)]:S.cables[0];
@@ -720,15 +877,15 @@ function storm(){flash(.9);thunder();setTimeout(()=>flash(.6),220);setTimeout(()
 let last=performance.now(),acc=0;
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(0.25,(now-last)/1000);last=now;
   if(lapse){S.time+=dt*lapse.rate;if(lapse.kind==='day'){const e=SOL.el.exterior;if(e)lapse.max=Math.max(lapse.max,-e.i)}if(S.time>=lapse.to){S.time=lapse.to;physics(dt);endLapse()}renderClock()}
-  acc+=dt;if(acc>=0.05){physics(acc);acc=0;checkStep(0.05);updateVisuals()}
+  acc+=dt;if(acc>=0.05){const a=acc;acc=0;physics(a);checkStep(a);updateVisuals()}   // el tiempo real que ha pasado: en un aparato lento no se alarga la espera
   stepPuffs(dt);if(meshes.comps.pared&&meshes.comps.pared.userData.hub){const e=SOL.el.pared;meshes.comps.pared.userData.hub.rotation.z-=dt*(e?Math.abs(e.v)*2.2:0)}
   // cámara
-  const t=cam.target,ce=Math.cos(cam.el);camera.position.set(t.x+cam.dist*ce*Math.sin(cam.az),t.y+cam.dist*Math.sin(cam.el),t.z+cam.dist*ce*Math.cos(cam.az));camera.lookAt(t);
+  const tg=cam.target,ce=Math.cos(cam.el);camera.position.set(tg.x+cam.dist*ce*Math.sin(cam.az),tg.y+cam.dist*Math.sin(cam.el),tg.z+cam.dist*ce*Math.cos(cam.az));camera.lookAt(tg);
   if(cableA||probe){const id=cableA||probe;const m=meshes.terms[id];if(m)m.mesh.material.emissiveIntensity=0.7+0.5*Math.sin(now/150)}
   renderer.render(scene,camera)}
 let lastSave=0;
 function checkStep(dt){const st=stepObj();if(!st||st.k!=='action')return;if(st.check()){holdT+=dt;if(holdT>=(st.hold||0)){nextStep()}}else holdT=0;
-  if(S.reto===0&&S.step===1){const e=SOL.el.puerta;if(ledOn()&&ledI()<0.015&&ledI()>0.002&&!checkStep.dimSaid){checkStep.dimSaid=true;say(`Funciona, pero solo pasan ${fmt(ledI()*1000,0)} mA y luce poco. ¿Puedes hacer que brille más sin pasar de 20 mA?`)}}
+  if(S.reto===0&&S.step===1){const e=SOL.el.puerta;if(ledOn()&&ledI()<0.015&&ledI()>0.002&&!checkStep.dimSaid){checkStep.dimSaid=true;say(t('led.dim',{ma:fmt(ledI()*1000,0)}))}}
   if(lapse&&performance.now()-lastSave>2000){lastSave=performance.now();save()}}
 function updateVisuals(){const h=((S.time%24)+24)%24,sun=sunAt(h);
   const dayK=clamp(sun*1.6,0,1);skyMat.color.set(new THREE.Color('#0e1a33').lerp(new THREE.Color('#8fc2ef'),dayK));starMat.opacity=1-dayK;
@@ -745,16 +902,25 @@ addEventListener('resize',resize);
 if('ResizeObserver' in window)new ResizeObserver(resize).observe($('#stage'));
 
 /* ventana modal */
-function modal(html,onMount){const m=$('#modal');$('#sheet').innerHTML=html;m.hidden=false;const close=()=>{m.hidden=true;$('#sheet').innerHTML=''};if(onMount)onMount(close);const b=$('#sheet button');if(b)setTimeout(()=>b.focus(),30);return close}
-$('#btnReset').onclick=()=>modal(`<h3>Empezar de nuevo</h3><p>Se borran tu Energía, tus piezas y los retos superados en este aparato.</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rNo">Cancelar</button><button class="btn pri" id="rYes">Borrar y empezar</button></div>`,close=>{$('#rNo').onclick=close;$('#rYes').onclick=()=>{S=fresh();for(const k in pstate)delete pstate[k];save();close();rebuildAll();solve();setTool('montar');say('Bienvenido al refugio. Esta noche hay que dejarlo funcionando.');renderAll()}});
+function modal(html,onMount){const m=$('#modal');$('#sheet').innerHTML=html;const h=$('#sheet h3');if(h){h.id='sheetT';$('#sheet').setAttribute('aria-labelledby','sheetT')}m.hidden=false;const close=()=>{m.hidden=true;$('#sheet').innerHTML=''};if(onMount)onMount(close);const b=$('#sheet button');if(b)setTimeout(()=>b.focus(),30);return close}
+$('#btnReset').onclick=()=>modal(`<h3>${esc(t('reset.btn'))}</h3><p>${esc(t('reset.txt'))}</p><div class="row" style="justify-content:flex-end"><button class="btn" id="rNo">${esc(t('reset.no'))}</button><button class="btn pri" id="rYes">${esc(t('reset.yes'))}</button></div>`,close=>{$('#rNo').onclick=close;$('#rYes').onclick=()=>{const l=S.lang;S=fresh();if(l)S.lang=l;for(const k in pstate)delete pstate[k];save();close();rebuildAll();solve();setTool('montar');say(t('mentor.hello'));renderAll()}});
+/* idioma: se guarda la elección y se vuelve a cargar, para que también cambien los rótulos de la escena */
+function setLang(l){if(l===L||(l!=='es'&&l!=='fr'))return;S.lang=l;saveNow();location.reload()}
+$$('[data-lang]').forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+function applyStatic(){document.documentElement.lang=L;document.title=t('doc.title');
+  const md=document.querySelector('meta[name="description"]');if(md)md.content=t('doc.desc');
+  $$('[data-t]').forEach(e=>e.textContent=t(e.dataset.t));
+  $$('[data-t-aria]').forEach(e=>e.setAttribute('aria-label',t(e.dataset.tAria)));
+  $$('[data-t-title]').forEach(e=>e.title=t(e.dataset.tTitle));
+  $$('[data-lang]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lang===L)))}
 
 /* arranque */
-function start(){if(!window.THREE){$('#loading').textContent='No se ha podido cargar el motor 3D. Comprueba la conexión y recarga.';return}
-  try{initScene()}catch(e){$('#loading').textContent='Este aparato no puede mostrar gráficos 3D.';console.error(e);return}
+function start(){applyStatic();if(!window.THREE){$('#loading').textContent=t('err.three');return}
+  try{initScene()}catch(e){$('#loading').textContent=t('err.gl');console.error(e);return}
   $('#loading').remove();rebuildAll();solve();setTool('montar');renderAll();
-  const st=stepObj();if(st&&st.mentor)say(st.mentor);else if(!reto())say('Modo libre. El refugio es tuyo.');
+  const st=stepObj();say(st&&st.mentor?st.mentor:!reto()?t('free.say2'):t(S.reto||S.step?'mentor.back':'mentor.hello'));
   requestAnimationFrame(frame)}
-window.__REFUGIO={cableMid:id=>meshes.cables[id]&&meshes.cables[id].curve.getPoint(0.5),markerPos:id=>{const v=new THREE.Vector3();meshes.markers[id].getWorldPosition(v);return v},compPos,get S(){return S},solve,get SOL(){return SOL},onTap,setTool,place,COMP,termWorld,camera:()=>camera,nextStep,pick,get tool(){return tool},setMeter:m=>$(`#meter [data-m="${m}"]`).click()};
+window.__REFUGIO={cableMid:id=>meshes.cables[id]&&meshes.cables[id].curve.getPoint(0.5),markerPos:id=>{const v=new THREE.Vector3();meshes.markers[id].getWorldPosition(v);return v},compPos,get S(){return S},solve,get SOL(){return SOL},onTap,setTool,place,COMP,SLOTS,RETOS,PASS,TX,get lang(){return L},setLang,termWorld,camera:()=>camera,nextStep,pick,get tool(){return tool},setMeter:m=>$(`#meter [data-m="${m}"]`).click()};
 start();
 })();
 </script>

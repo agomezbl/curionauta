@@ -20,10 +20,10 @@
     'svg{width:22px;height:22px;flex:none;order:2}span{order:1;white-space:nowrap}' +
     '@media (prefers-reduced-motion:reduce){a{transition:none}}' +
     '@media print{a{display:none}}' +
-    '</style><a href="/estacion/" aria-label="' + txt + '" title="' + txt + '"><span>' + txt + '</span>' +
+    '</style><nav aria-label="Curionaut"><a href="/estacion/" aria-label="' + txt + '" title="' + txt + '"><span>' + txt + '</span>' +
     '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="#d9a441" stroke-width="2"/>' +
     '<ellipse cx="12" cy="12" rx="10" ry="3.5" fill="none" stroke="#7fd1c7" stroke-width="1.6" transform="rotate(-24 12 12)"/>' +
-    '<circle cx="12" cy="12" r="3.5" fill="#d9a441"/></svg></a>';
+    '<circle cx="12" cy="12" r="3.5" fill="#d9a441"/></svg></a></nav>';
   var add = function () { document.body && document.body.appendChild(host); };
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
 })();

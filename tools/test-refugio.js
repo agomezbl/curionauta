@@ -1,4 +1,5 @@
-// Prueba de El Refugio 0.1 (dist/refugio/) en un Chromium real con WebGL por software: los tres retos tocando la escena.
+// Prueba de El Refugio (dist/refugio/) en un Chromium real con WebGL por software: los tres retos tocando la escena,
+// el francés (textos completos, reto 1 jugado en francés, cambio de idioma) y el móvil en los dos idiomas.
 // Uso: bash tools/montar.sh && node tools/test-refugio.js
 const {chromium}=require('playwright');const fs=require('fs'),path=require('path'),http=require('http');
 const ROOT=path.join(__dirname,'..','dist'),SH=path.join(__dirname,'..','shots','refugio');fs.mkdirSync(SH,{recursive:true});
@@ -9,7 +10,7 @@ let fails=0,oks=0;const check=(c,m)=>{if(c){oks++;console.log('  ✓',m)}else{fa
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
  const b=await chromium.launch({args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
- async function nueva(vp,mobile){const ctx=await b.newContext({viewport:vp,hasTouch:!!mobile,isMobile:!!mobile,deviceScaleFactor:1});
+ async function nueva(vp,mobile,locale,init){const ctx=await b.newContext({viewport:vp,hasTouch:!!mobile,isMobile:!!mobile,deviceScaleFactor:1,locale:locale||'es-ES'});if(init)await ctx.addInitScript(init);
   const p=await ctx.newPage();const errs=[];p.on('request',q=>{if(!q.url().startsWith('http://localhost:8781/')&&!q.url().startsWith('data:'))errs.push('llamada externa: '+q.url())});p.on('pageerror',e=>errs.push(e.message));p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
   await p.goto('http://localhost:8781/refugio/');await p.waitForFunction(()=>window.__REFUGIO&&!document.getElementById('loading'),null,{timeout:20000});await sleep(600);return {ctx,p,errs}}
  const scr=async(p,wp)=>p.evaluate(w=>{const R=window.__REFUGIO,cam=R.camera(),cv=document.getElementById('cv'),rc=cv.getBoundingClientRect();const v=w.clone?w.clone():new (Object.getPrototypeOf(R.compPos('banco')).constructor)(w.x,w.y,w.z);v.project(cam);return {x:rc.left+(v.x+1)/2*rc.width,y:rc.top+(1-v.y)/2*rc.height}},wp);
@@ -98,4 +99,60 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await p.fill('#ans','500');await p.click('#ansF button[type=submit]');await sleep(2100);
   await p.click('.tool[data-tool="medir"]');await sleep(200);await p.screenshot({path:path.join(SH,`9-${n}-medir.png`)});
   check(ov.sw<=ov.cw&&errs.length===0,`${n}: sin desbordar ni errores ${errs.slice(0,2).join('|')}`);await ctx.close()}
+ console.log('Francés');
+ {const {ctx,p,errs}=await nueva({width:1440,height:900},false,'fr-FR');
+  // 1) todos los textos tienen sus dos versiones
+  const faltan=await p.evaluate(()=>{const R=window.__REFUGIO,out=[];let n=0;
+    const ver=(o,d)=>{n++;if(!o||typeof o.es!=='string'||typeof o.fr!=='string'||!o.es.trim()||!o.fr.trim())out.push(d)};
+    for(const k in R.TX)ver(R.TX[k],'TX.'+k);
+    for(const k in R.COMP){ver(R.COMP[k].name,'COMP.'+k+'.name');ver(R.COMP[k].desc,'COMP.'+k+'.desc')}
+    for(const k in R.SLOTS)ver(R.SLOTS[k].where,'SLOTS.'+k);
+    R.PASS.forEach(x=>ver(x.t,'PASS.'+x.id));
+    R.RETOS.forEach(r=>{ver(r.name,r.id+'.name');r.steps.forEach((s,i)=>{const d=r.id+'.'+i;ver(s.q,d+'.q');if(s.after)ver(s.after,d+'.after');if(s.mentor)ver(s.mentor,d+'.mentor');
+      (s.hints||[]).forEach((h,j)=>ver(h,d+'.hint'+j));(s.choices||[]).forEach((c,j)=>ver(c,d+'.choice'+j));
+      if(typeof s.wrong==='function')[600,100,5,2,15,7777].forEach(v=>ver(s.wrong(v),d+'.wrong('+v+')'));else if(s.wrong)ver(s.wrong,d+'.wrong')})});
+    return {n,out}});
+  check(faltan.out.length===0&&faltan.n>200,`${faltan.n} textos con versión en español y en francés ${faltan.out.slice(0,4).join(', ')}`);
+  // 2) la página entera sale en francés
+  const fr0=await p.evaluate(()=>({lang:document.documentElement.lang,L:window.__REFUGIO.lang,q:document.querySelector('#reto .q').textContent,tools:[...document.querySelectorAll('.tool')].map(b=>b.textContent.trim()).join(','),
+    cuerpo:document.getElementById('app').innerText,aria:document.getElementById('cv').getAttribute('aria-label'),titulo:document.title,pulsado:document.querySelector('[data-lang][aria-pressed="true"]').dataset.lang}));
+  check(fr0.lang==='fr'&&fr0.L==='fr'&&fr0.pulsado==='fr','aparato en francés → el juego arranca en francés');
+  check(/La batterie fournit/.test(fr0.q)&&fr0.tools==='Monter,Câble,Mesurer,Retirer'&&/^Scène du refuge/.test(fr0.aria),'reto, herramientas y descripciones en francés');
+  const esp=fr0.cuerpo.match(/\b(Batería|Resistencia|Interruptor|Reto|Tienda|Caja de piezas|Pasaporte|Montar|Quitar|Medir|Comprobar|pista|Empezar|Prototipo de|Bienvenid\w+|refugio)\b/g);
+  check(!esp,'sin restos de español en la pantalla '+(esp?esp.slice(0,5).join(', '):''));
+  check(/\u00a0\?/.test(fr0.q)&&!/ [?!:;]/.test(fr0.cuerpo),'tipografía francesa: el signo ? ! : ; no se queda solo al principio de una línea');
+  await p.screenshot({path:path.join(SH,'10-fr-inicio.png')});
+  // 3) reto 1 jugado en francés
+  await p.fill('#ans','600');await p.click('#ansF button[type=submit]');await sleep(150);
+  check(/12 V en entier/.test(await p.textContent('#fb')),'600 → pista en francés');
+  await p.fill('#ans','500');await p.click('#ansF button[type=submit]');await sleep(2100);
+  await tool(p,'montar');await p.click('#inv [data-k="r1k"]');await sleep(100);check(/À poser.*Résistance 1\u00a0000 Ω/.test(await p.textContent('#hint')),'ayuda al elegir pieza: '+(await p.textContent('#hint')));
+  await p.click('#inv [data-k="r560"]');await sleep(100);await tap(p,await markXY(p,'c2'));
+  check(/Pièce posée\u00a0: Résistance 560 Ω/.test(await p.textContent('#hint')),'pieza colocada: '+(await p.textContent('#hint')));
+  await wire(p,'banco.a','c1.a');await wire(p,'c1.b','c2.a');await wire(p,'c2.b','puerta.a');await wire(p,'puerta.b','banco.b');
+  await tool(p,'montar');await tap(p,await compXY(p,'c1'));
+  await p.waitForSelector('#modal:not([hidden])',{timeout:12000}).catch(()=>{});
+  const mod=await p.textContent('#sheet');check(/Défi réussi/.test(mod)&&/Je calcule la résistance/.test(mod)&&/Ça tient toute la nuit\u00a0\?/.test(mod),'ventana de reto superado en francés');
+  await p.screenshot({path:path.join(SH,'10-fr-reto1.png')});await p.click('#mOk');await sleep(300);
+  check(/Démontré dans El Refugio · \d+ novembre|Démontré dans El Refugio · \d+ \S+/.test(await p.textContent('#pass')),'Pasaporte con la fecha en francés');
+  await tool(p,'medir');await p.click('#meter [data-m="A"]');const c1=await p.evaluate(()=>window.__REFUGIO.S.cables[0].id);await tap(p,await cabXY(p,c1));
+  check(/Dans ce câble, il passe 1[78],\d mA/.test(await p.textContent('#hint')),'multímetro: '+(await p.textContent('#hint')));
+  await p.screenshot({path:path.join(SH,'10-fr-medir.png')});
+  // 4) cambio de idioma: recarga, no pierde nada y se queda elegido
+  await sleep(400);await p.click('[data-lang="es"]');await p.waitForFunction(()=>window.__REFUGIO&&window.__REFUGIO.lang==='es'&&!document.getElementById('loading'),null,{timeout:20000});await sleep(400);
+  let s=await st(p);check(s.reto===1&&s.cables===4&&/Reto 2 de 3/.test(await p.textContent('#reto')),'cambia a español sin perder la partida');
+  await p.click('[data-lang="fr"]');await p.waitForFunction(()=>window.__REFUGIO&&window.__REFUGIO.lang==='fr'&&!document.getElementById('loading'),null,{timeout:20000});await sleep(300);
+  await p.reload();await p.waitForFunction(()=>window.__REFUGIO&&!document.getElementById('loading'));await sleep(300);
+  check(await p.evaluate(()=>window.__REFUGIO.lang)==='fr'&&/Défi 2 sur 3/.test(await p.textContent('#reto')),'el idioma elegido se recuerda');
+  const ov=await p.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth}));check(ov.sw<=ov.cw&&errs.length===0,'francés en escritorio: sin desbordar ni errores '+errs.slice(0,2).join('|'));
+  await ctx.close()}
+ // 5) sigue el idioma de la Estación aunque el aparato esté en español
+ {const {ctx,p}=await nueva({width:1180,height:820},true,'es-ES',()=>{localStorage.setItem('estacion-nil-v1',JSON.stringify({lang:'fr'}))});
+  check(await p.evaluate(()=>window.__REFUGIO.lang)==='fr','Estación en francés → El Refugio en francés');
+  check(await p.evaluate(()=>localStorage.getItem('curionauta-refugio-0.1'))===null,'solo mirar no crea partida');await ctx.close()}
+ for(const [vp,n] of [[{width:390,height:844},'movil'],[{width:820,height:1180},'tableta']]){
+  const {ctx,p,errs}=await nueva(vp,true,'fr-FR');await p.screenshot({path:path.join(SH,`11-fr-${n}.png`),fullPage:true});
+  await p.fill('#ans','500');await p.click('#ansF button[type=submit]');await sleep(2100);await p.click('.tool[data-tool="medir"]');await sleep(200);await p.screenshot({path:path.join(SH,`11-fr-${n}-medir.png`)});
+  const ov=await p.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth,tools:document.querySelector('.tools').getBoundingClientRect().width,stage:document.getElementById('stage').getBoundingClientRect().width}));
+  check(ov.sw<=ov.cw&&ov.tools<=ov.stage&&errs.length===0,`francés ${n}: sin desbordar ni errores ${errs.slice(0,2).join('|')}`);await ctx.close()}
  console.log(`\n${oks} bien, ${fails} mal`);srv.close();await b.close();process.exit(fails?1:0)})();

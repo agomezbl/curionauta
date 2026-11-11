@@ -1,5 +1,5 @@
 // Auditoría de accesibilidad (WCAG 2.1 AA) con axe-core sobre dist/: web pública ES/FR,
-// privacidad y la Estación (inicio, mentor con pregunta, zona de padres, cuaderno).
+// privacidad, la Estación (inicio, mentor con pregunta, zona de padres, cuaderno) y El Refugio en español y francés.
 //   AXE=/ruta/a/axe.min.js node tools/test-accesibilidad.js
 const { chromium } = require('playwright'); const path = require('path'), fs = require('fs'), http = require('http');
 const AXE = fs.readFileSync(process.env.AXE || require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -17,7 +17,7 @@ async function audit(p, nombre) {
   return v.length;
 }
 (async () => {
-  const b = await chromium.launch(); let total = 0;
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); let total = 0;   // WebGL por software para El Refugio
   for (const vp of [{ w: 390, h: 844, n: 'móvil' }, { w: 1440, h: 900, n: 'pc' }]) {
     const ctx = await b.newContext({ viewport: { width: vp.w, height: vp.h } });
     await ctx.route('**/umd/supabase.js', r => r.fulfill({ contentType: 'text/javascript', body: '' }));
@@ -35,6 +35,14 @@ async function audit(p, nombre) {
     await p.click('#stPar'); await p.fill('#pgIn', 'abcd'); await p.click('#pgOk'); await p.waitForTimeout(200); total += await audit(p, `${vp.n} estación: zona de padres`);
     await p.click('[data-tab="inf"]'); await p.waitForTimeout(150); total += await audit(p, `${vp.n} estación: informe`);
     await ctx.close();
+    for (const loc of ['es-ES', 'fr-FR']) {
+      const c2 = await b.newContext({ viewport: { width: vp.w, height: vp.h }, locale: loc }); const p2 = await c2.newPage();
+      await p2.goto(B + '/refugio/'); await p2.waitForFunction(() => window.__REFUGIO && !document.getElementById('loading'), null, { timeout: 20000 }); await p2.waitForTimeout(400);
+      total += await audit(p2, `${vp.n} refugio ${loc}: reto`);
+      await p2.click('.tool[data-tool="medir"]'); await p2.waitForTimeout(150); total += await audit(p2, `${vp.n} refugio ${loc}: multímetro`);
+      await p2.click('#btnReset'); await p2.waitForTimeout(150); total += await audit(p2, `${vp.n} refugio ${loc}: ventana`);
+      await c2.close();
+    }
   }
   console.log(`\n${total ? '✗' : '✓'} total: ${total} problemas`); srv.close(); await b.close(); process.exit(total ? 1 : 0);
 })();
