@@ -402,7 +402,9 @@ window.CURIO_MENTORES = (function () {
       preguntas: [
         q('¿Qué decisión de tu partida cambiarías si pudieras volver atrás?', 'Quelle décision de ta partie changerais-tu si tu pouvais revenir en arrière ?'),
         q('¿Cuándo te compensa arriesgar y cuándo es mejor esperar?', 'Quand vaut-il la peine de prendre un risque, et quand vaut-il mieux attendre ?'),
-        q('¿Qué aprendiste de un enemigo que te ganó?', 'Qu’as-tu appris d’un ennemi qui t’a battu ?')
+        q('¿Qué aprendiste de un enemigo que te ganó?', 'Qu’as-tu appris d’un ennemi qui t’a battu ?'),
+        q('Con 2 dados, ¿cuántas veces de cada 4 sale al menos una calavera? ¿Cómo lo has pensado?', 'Avec 2 dés, combien de fois sur 4 obtiens-tu au moins un crâne ? Comment as-tu raisonné ?'),
+        q('¿Qué dilema de la noche te costó más decidir? ¿Qué razón te convenció?', 'Quel dilemme de la nuit a été le plus difficile à trancher ? Quelle raison t’a convaincu ?')
       ]
     }
   };
