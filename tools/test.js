@@ -108,6 +108,8 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await p.click('#pClose'); await p.waitForTimeout(200);
     const mon = await p.evaluate(() => ({ refl: __EST.S.led.filter(x => /^refl:/.test(x.k)).map(x => x.e).join(), e: __EST.ECO.saldo(__EST.S.led).e, cab: document.querySelector('#wE').textContent.replace(/\D/g, '') }));
     check(mon.refl === '25' && String(mon.e) === mon.cab, `estación ${vp.n}: la reflexión validada da 25 de Energía y se ve en el monedero de la cabecera (${mon.cab})`);
+    const otro = await p.evaluate(() => { const e0 = __EST.ECO.saldo(__EST.S.led).e; __EST.S.refl.push({ id: 'otro-aparato', estado: 'validada', puntos: 50, created: Date.now(), game: 'chrono-ohm', topic: 'c1' }); __EST.save(); document.dispatchEvent(new Event('visibilitychange')); return new Promise(r => setTimeout(() => r({ antes: e0, despues: __EST.ECO.saldo(__EST.S.led).e, pagada: __EST.S.led.some(x => x.k === 'refl:otro-aparato') }), 300)); });
+    check(!otro.pagada && otro.despues === otro.antes, `estación ${vp.n}: una reflexión escrita en otro aparato no se paga aquí (se paga solo donde se escribió)`);
     check(/\+25 puntos/.test(await p.textContent('#mentorBox')), `estación ${vp.n}: el mentor le cuenta la validación`);
     await p.screenshot({ path: path.join(SH, `est-${vp.n}-5-validada.png`) });
     await p.click('#openBook'); await p.waitForTimeout(200);

@@ -26,10 +26,13 @@ const DEF = { mode: '', device: uid(), links: null, notes: [], localPin: '', cac
   /* yo: avatar por piezas, fondo, títulos que luce (hasta tres), género de los títulos y cuándo ganó cada uno */
   av: null, fondo: 'orbita', tit: [], gen: 'n', titAt: {}, childName: '' };
 let S; try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { S = Object.assign({}, DEF); }
-['seen', 'qi', 'shown', 'cache', 'hist', 'titAt'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+['seen', 'qi', 'shown', 'cache', 'hist', 'titAt', 'mias'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
 ['bita', 'refl', 'notes', 'pending', 'led', 'tit'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
 S.led = S.led.filter(x => x && typeof x.k === 'string'); S.av = ARTE.limpia(S.av);
 if (![0.5, 0.75, 1, 1.5, 2].includes(S.mult)) S.mult = 1;
+/* reflexiones escritas en ESTE aparato: solo esas se pagan aquí (el monedero va por aparato y las reflexiones están en la nube;
+   sin esto, el móvil y la tableta pagarían las dos la misma). Al estrenar la regla, cuentan como propias las ya pagadas aquí. */
+if (!S.miasOk) { S.led.forEach(x => { if (/^refl:/.test(x.k)) S.mias[x.k.slice(5)] = 1; }); S.miasOk = 1; }
 if (!ARTE.FONDOS.some(f => f.id === S.fondo)) S.fondo = 'orbita';
 if (!['m', 'f', 'n'].includes(S.gen)) S.gen = 'n';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
@@ -458,7 +461,7 @@ function sendRefl(entry, text) {
   const tp = topicOf(entry); const q = tp ? tt(tp.preguntas[entry.q % tp.preguntas.length]) : '';
   const ctxt = (entry.retry ? '↻ ' : '') + `${gameName(entry.game)} · ${tp ? tt(tp.nombre) : entry.topic} · ${unitText(entry)}${entry.xp ? ` · +${entry.xp} XP` : ''}`;
   const r = { id: uid(), game: entry.game, topic: entry.topic, mentor: mentorId(), lang: L, ctx: ctxt.slice(0, 300), pregunta: q.slice(0, 400), respuesta: text.slice(0, 1500), estado: 'pendiente', puntos: 0, nota: '', created: Date.now(), retry: !!entry.retry };
-  S.refl.unshift(r);
+  S.refl.unshift(r); S.mias[r.id] = 1;
   if (cloudOn()) queue({ t: 'refl', row: { id: r.id, game: r.game, topic: r.topic, mentor: r.mentor, lang: r.lang, contexto: r.ctx, pregunta: r.pregunta, respuesta: r.respuesta } });
   save();
 }
@@ -939,7 +942,7 @@ function apuntar() {
   const now = Date.now(), d = hoy(), have = new Set(S.led.map(x => x.k)), nuevos = [], primera = !S.ecoAt;
   const add = (k, e, c, g) => { if (have.has(k)) return; const x = { k, e: ECO.escala(e || 0, S.mult), c: c || 0, g: g || '', at: now }; if (primera) x.w = 1; S.led.push(x); have.add(k); nuevos.push(x); };
   let cand = []; try { cand = ECO.logros(ECO.hechos(read)); } catch (e) { cand = []; }
-  try { cand = cand.concat(ECO.logrosReflexion(S.refl, ymd)); } catch (e) {}
+  try { cand = cand.concat(ECO.logrosReflexion(S.refl.filter(r => S.mias[r.id]), ymd)); } catch (e) {}
   cand.forEach(a => { LBL[a.k] = a.l; add(a.k, a.e, a.c, a.g); });
   if (!primera && avances.length) { const of = ofertaHoy(); avances.forEach(g => { add(`dia:${d}:${g}`, ECO.V.dia, 0, g); if (g === of) add(`oferta:${d}`, ECO.V.oferta, 0, g); }); }
   avances = [];
