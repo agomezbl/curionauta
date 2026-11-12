@@ -1,5 +1,6 @@
 // Auditoría de accesibilidad (WCAG 2.1 AA) con axe-core sobre dist/: web pública ES/FR,
-// privacidad, la Estación (inicio, mentor con pregunta, zona de padres, cuaderno) y El Refugio en español y francés.
+// privacidad, la Estación (inicio, mentor con pregunta, zona de padres, cuaderno, juegos, monedero, pasaporte,
+// avatar y fondos) y El Refugio en español y francés.
 //   AXE=/ruta/a/axe.min.js node tools/test-accesibilidad.js
 const { chromium } = require('playwright'); const path = require('path'), fs = require('fs'), http = require('http');
 const AXE = fs.readFileSync(process.env.AXE || require.resolve('axe-core/axe.min.js'), 'utf8');
@@ -34,6 +35,18 @@ async function audit(p, nombre) {
     await p.click('#btnSet'); await p.waitForTimeout(150); total += await audit(p, `${vp.n} estación: ajustes`);
     await p.click('#stPar'); await p.fill('#pgIn', 'abcd'); await p.click('#pgOk'); await p.waitForTimeout(200); total += await audit(p, `${vp.n} estación: zona de padres`);
     await p.click('[data-tab="inf"]'); await p.waitForTimeout(150); total += await audit(p, `${vp.n} estación: informe`);
+    await p.click('#pClose'); await p.waitForTimeout(150);
+    // pantallas nuevas (v3): juegos, monedero con hucha abierta, compra, pasaporte y avatar con los fondos
+    const ir = async v => { await p.click(`[data-go="${v}"] >> visible=true`); await p.waitForTimeout(250); };
+    await p.evaluate(() => { __EST.S.led.push({ k: 'regalo:prueba', e: 400, c: 3, g: '', at: Date.now() }, { k: 'hucha:lista:in', e: -50, c: 0, g: '', at: Date.now() - 4 * 864e5, x: { d: 3 } }); __EST.save(); });
+    await ir('juegos'); total += await audit(p, `${vp.n} estación: juegos y oferta del día`);
+    await ir('monedero'); await p.fill('#huIn', '100'); await p.click('#huGo'); await p.waitForTimeout(200); await p.click('.how summary'); total += await audit(p, `${vp.n} estación: monedero, mercado y hucha`);
+    await p.click('#mkBuy'); await p.waitForTimeout(150); total += await audit(p, `${vp.n} estación: confirmar un cambio`); await p.click('#cfNo');
+    await ir('pasaporte'); await p.click('#pasBox details.pend summary'); await p.waitForTimeout(100); total += await audit(p, `${vp.n} estación: pasaporte y títulos`);
+    await ir('yo'); total += await audit(p, `${vp.n} estación: avatar y fondos`);
+    await p.click('[data-grp="casco"]'); await p.click('[data-slot="casco"][data-id="visor"]'); await p.waitForTimeout(150); total += await audit(p, `${vp.n} estación: comprar una pieza`); await p.click('#cfNo');
+    for (const f of ['amanecer', 'nieve', 'oceano']) { await p.evaluate(f => { __EST.S.fondo = f; document.querySelector('#fondo').className = 'fx f-' + f; }, f); await ir('inicio'); total += await audit(p, `${vp.n} estación: inicio con el fondo «${f}»`); }
+    await p.evaluate(() => __EST.setLang('fr')); await ir('monedero'); total += await audit(p, `${vp.n} estación: monedero en francés`);
     await ctx.close();
     for (const loc of ['es-ES', 'fr-FR']) {
       const c2 = await b.newContext({ viewport: { width: vp.w, height: vp.h }, locale: loc }); const p2 = await c2.newPage();

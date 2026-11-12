@@ -1,7 +1,7 @@
 /* Curionaut · Estación: funciona sin conexión. Guarda la app y la librería de Supabase;
    los datos van siempre por la red. La versión la cambia tools/montar.sh en cada publicación. */
 const V = 'curionauta-estacion-__V__';
-const SHELL = ['./', 'index.html', 'estacion.css', 'app.js', 'mentores.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
+const SHELL = ['./', 'index.html', 'estacion.css', 'app.js', 'mentores.js', 'economia.js', 'arte.js', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('curionauta-estacion-') && k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

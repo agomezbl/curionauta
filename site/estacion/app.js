@@ -1,7 +1,9 @@
 /* =====================================================================
    Curionaut · la Estación
-   Panel del niño: mentor y cuaderno de reflexiones, horario y agenda,
-   enlaces del colegio, notas, Rutinator y los juegos con su progreso.
+   Panel del niño en cinco pantallas: Inicio (mentor, novedades, horario,
+   colegio, Rutinator, notas), Juegos, Monedero (Energía, Cristales, mercado
+   y hucha), Pasaporte (saberes y títulos) y Yo (avatar y fondos).
+   Las reglas de los puntos están en economia.js; los dibujos, en arte.js.
    Español y francés. Sin cuenta funciona en el aparato; con la cuenta
    de Rutinator (Supabase) se comparte entre aparatos y con el padre.
    ===================================================================== */
@@ -10,7 +12,7 @@
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CFG = Object.assign({ supabaseUrl: '', supabaseKey: '', rutinatorUrl: '../rutinator/', oldUrl: 'https://agomezbl.github.io/estacion-nil/' }, window.ESTACION || {});
-const MEN = window.CURIO_MENTORES;
+const MEN = window.CURIO_MENTORES, ECO = window.CURIO_ECO, ARTE = window.CURIO_ARTE;
 const KEY = 'estacion-nil-v1';          // se mantiene: así la mudanza desde la Estación antigua es directa
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2));
 const ymd = d => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 6e4); return z.toISOString().slice(0, 10); };
@@ -18,10 +20,18 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 
 /* ---------------- estado guardado en este aparato ---------------- */
 const DEF = { mode: '', device: uid(), links: null, notes: [], localPin: '', cache: {}, pending: [],
-  lang: '', mentor: '', seen: {}, bita: [], qi: {}, refl: [], shown: {}, mentorOff: false, hist: {} };
+  lang: '', mentor: '', seen: {}, bita: [], qi: {}, refl: [], shown: {}, mentorOff: false, hist: {},
+  /* monedero: libro de puntos (cada apunte {k, e, c, g, at} con clave única), multiplicador del padre y oferta del día */
+  led: [], mult: 1, ecoAt: 0, oferta: null,
+  /* yo: avatar por piezas, fondo, títulos que luce (hasta tres), género de los títulos y cuándo ganó cada uno */
+  av: null, fondo: 'orbita', tit: [], gen: 'n', titAt: {}, childName: '' };
 let S; try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { S = Object.assign({}, DEF); }
-['seen', 'qi', 'shown', 'cache', 'hist'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
-['bita', 'refl', 'notes', 'pending'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
+['seen', 'qi', 'shown', 'cache', 'hist', 'titAt'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+['bita', 'refl', 'notes', 'pending', 'led', 'tit'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
+S.led = S.led.filter(x => x && typeof x.k === 'string'); S.av = ARTE.limpia(S.av);
+if (![0.5, 0.75, 1, 1.5, 2].includes(S.mult)) S.mult = 1;
+if (!ARTE.FONDOS.some(f => f.id === S.fondo)) S.fondo = 'orbita';
+if (!['m', 'f', 'n'].includes(S.gen)) S.gen = 'n';
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
 /* ---------------- idioma ---------------- */
@@ -42,7 +52,8 @@ const I = {
   'lang.switch': ['Version française', 'Versión en español'],
   'card.today': ['Hoy', 'Aujourd’hui'], 'card.school': ['Colegio', 'Collège'], 'card.notes': ['Notas y recordatorios', 'Notes et rappels'],
   'card.games': ['Mis juegos', 'Mes jeux'], 'mentor.card': ['Cuaderno de vuelo', 'Carnet de bord'], 'mentor.book': ['Mi cuaderno', 'Mon carnet'],
-  'nav.mentor': ['Mentor', 'Mentor'], 'nav.today': ['Hoy', 'Jour'], 'nav.notes': ['Notas', 'Notes'], 'nav.games': ['Juegos', 'Jeux'],
+  'nav.inicio': ['Inicio', 'Accueil'], 'nav.juegos': ['Juegos', 'Jeux'], 'nav.monedero': ['Monedero', 'Bourse'], 'nav.pasaporte': ['Pasaporte', 'Passeport'], 'nav.yo': ['Yo', 'Moi'],
+  'nav.label': ['Pantallas de la Estación', 'Écrans de la Station'], 'card.new': ['Novedades', 'Nouveautés'],
   'hi.morning': ['Buenos días', 'Bonjour'], 'hi.afternoon': ['Buenas tardes', 'Bonjour'], 'hi.night': ['Buenas noches', 'Bonsoir'],
   'notes.add': ['Añadir', 'Ajouter'], 'notes.ph': ['Escribe una nota o un recordatorio…', 'Écris une note ou un rappel…'],
   'notes.empty': ['Aquí puedes apuntar deberes, exámenes o lo que no quieras olvidar.', 'Ici, tu peux noter tes devoirs, tes contrôles ou ce que tu ne veux pas oublier.'],
@@ -75,7 +86,6 @@ const I = {
   'games.play': ['Seguir jugando', 'Continuer'], 'games.start': ['Empezar', 'Commencer'], 'games.none': ['Aún sin empezar', 'Pas encore commencé'],
   'games.progress': ['Progreso', 'Progression'], 'games.inprog': ['Partida en curso', 'Partie en cours'], 'games.started': ['Empezado', 'Commencé'],
   'lvl.title': ['Nivel de la Estación', 'Niveau de la Station'], 'lvl.text': ['{xp} XP · nivel {n}', '{xp} XP · niveau {n}'],
-  'bp.title': ['Puntos de bitácora: los que ganas pensando', 'Points de bord : ceux que tu gagnes en réfléchissant'],
   'foot.cloud': ['Conectada a tu cuenta', 'Connectée à ton compte'], 'foot.local': ['Solo en este aparato', 'Uniquement sur cet appareil'], 'foot.upd': ['actualizada {h}', 'mise à jour {h}'],
   'sync.local': ['Solo en este aparato', 'Uniquement sur cet appareil'], 'sync.busy': ['Sincronizando…', 'Synchronisation…'], 'sync.ok': ['Sincronizado', 'Synchronisé'],
   'sync.wait': ['Cambios esperando conexión', 'Modifications en attente de connexion'], 'sync.off': ['Sin conexión: mostrando lo último guardado', 'Pas de connexion : dernière version enregistrée'],
@@ -86,7 +96,7 @@ const I = {
   'set.noconn': ['Esta Estación todavía no está conectada: todo se guarda en este aparato.', 'Cette Station n’est pas encore connectée : tout est enregistré sur cet appareil.'],
   'set.sync': ['Sincronizar ahora', 'Synchroniser'], 'set.out': ['Salir de la cuenta', 'Se déconnecter'], 'set.in': ['Entrar con la cuenta', 'Se connecter'],
   'set.install': ['Instalar como app', 'Installer l’appli'], 'set.parents': ['Zona de padres', 'Espace parents'],
-  'set.about': ['Curionaut · Estación v2.0 · Sin publicidad. Lo que escribes solo lo ves tú (y tu familia, si entras con tu cuenta).', 'Curionaut · Station v2.0 · Sans publicité. Ce que tu écris, toi seul le vois (et ta famille, si tu te connectes).'],
+  'set.about': ['Curionaut · Estación v3.0 · Sin publicidad. Lo que escribes solo lo ves tú (y tu familia, si entras con tu cuenta).', 'Curionaut · Station v3.0 · Sans publicité. Ce que tu écris, toi seul le vois (et ta famille, si tu te connectes).'],
   'set.privacy': ['Privacidad', 'Confidentialité'],
   'inst.title': ['Instalar como app', 'Installer l’appli'], 'inst.ios': ['<b>iPhone o iPad (Safari):</b> botón Compartir ⬆️ → «Añadir a pantalla de inicio».', '<b>iPhone ou iPad (Safari) :</b> bouton Partager ⬆️ → « Sur l’écran d’accueil ».'],
   'inst.and': ['<b>Android (Chrome):</b> menú ⋮ → «Instalar aplicación» o «Añadir a pantalla de inicio».', '<b>Android (Chrome) :</b> menu ⋮ → « Installer l’application » ou « Ajouter à l’écran d’accueil ».'],
@@ -136,6 +146,73 @@ const I = {
   'r.copy': ['Copiar el informe', 'Copier le bilan'], 'r.share': ['Compartir', 'Partager'], 'r.copied': ['Informe copiado', 'Bilan copié'],
   'r.note': ['Se calcula con lo que hay en este aparato. Las semanas anteriores aparecen a partir de ahora, conforme se use la Estación.', 'Calculé à partir de ce qui est sur cet appareil. Les semaines précédentes apparaîtront au fil de l’utilisation de la Station.'],
   'p.links': ['Enlaces del colegio', 'Liens du collège'], 'p.editLinks': ['Editar los enlaces', 'Modifier les liens'],
+  /* monedero, mercado y hucha */
+  'w.energy': ['Energía', 'Énergie'], 'w.crystals': ['Cristales', 'Cristaux'],
+  'w.title': ['Tu monedero: {e} de Energía y {c} Cristales', 'Ta bourse : {e} d’Énergie et {c} Cristaux'],
+  'new.welcome': ['¡Tu monedero ya funciona! Por todo lo que habías conseguido hasta hoy, recibes:', 'Ta bourse est en service ! Pour tout ce que tu avais déjà réussi, tu reçois :'],
+  'new.start': ['Cada misión, cámara o reto que superes en un juego te da Energía. Los grandes hitos dan Cristales.', 'Chaque mission, salle ou défi réussi dans un jeu te donne de l’Énergie. Les grandes étapes donnent des Cristaux.'],
+  'new.last': ['Lo último que has ganado', 'Tes derniers gains'], 'new.more': ['y {n} más', 'et {n} de plus'],
+  'new.title': ['Nuevo título', 'Nouveau titre'], 'new.wallet': ['Ver el monedero', 'Voir la bourse'], 'new.games': ['Ir a los juegos', 'Aller aux jeux'],
+  'new.offer': ['Oferta de hoy: {n} de Energía extra si avanzas en {x}', 'Offre du jour : {n} d’Énergie en plus si tu progresses dans {x}'],
+  'of.title': ['Oferta del día', 'Offre du jour'],
+  'of.text': ['Hoy, si avanzas en {x}, te llevas {n} de Energía extra.', 'Aujourd’hui, si tu progresses dans {x}, tu gagnes {n} d’Énergie en plus.'],
+  'of.why': ['Es el juego al que llevas más tiempo sin jugar.', 'C’est le jeu auquel tu n’as pas joué depuis le plus longtemps.'],
+  'of.done': ['¡Oferta conseguida! Mañana habrá otra.', 'Offre obtenue ! Il y en aura une autre demain.'], 'of.go': ['Jugar a {x}', 'Jouer à {x}'],
+  'games.earned': ['ganados aquí', 'gagnés ici'],
+  'mon.bal': ['Mi monedero', 'Ma bourse'], 'mon.eHelp': ['Se gana jugando. Para el día a día.', 'Se gagne en jouant. Pour tous les jours.'],
+  'mon.cHelp': ['Solo por grandes hitos. Valen mucho.', 'Seulement pour les grandes étapes. Ils valent cher.'],
+  'mon.saved': ['En la hucha', 'Dans la tirelire'], 'mon.savedHelp': ['Energía guardada que está creciendo.', 'Énergie mise de côté, qui grandit.'],
+  'how.title': ['¿Cómo se gana?', 'Comment en gagner ?'],
+  'how.1': ['Superar una misión, una cámara o un reto: de 20 a 40 de Energía, una sola vez.', 'Réussir une mission, une salle ou un défi : de 20 à 40 d’Énergie, une seule fois.'],
+  'how.2': ['Terminar un capítulo o lograr algo difícil: de 1 a 5 Cristales.', 'Terminer un chapitre ou réussir quelque chose de difficile : de 1 à 5 Cristaux.'],
+  'how.3': ['Avanzar en un juego: 10 de Energía, una vez por juego y día.', 'Progresser dans un jeu : 10 d’Énergie, une fois par jeu et par jour.'],
+  'how.4': ['Una reflexión validada en tu cuaderno: 10, 25 o 50 de Energía (tres al día como mucho).', 'Une réflexion validée dans ton carnet : 10, 25 ou 50 d’Énergie (trois par jour au maximum).'],
+  'how.5': ['Repetir un nivel ya superado no da puntos: lo que cuenta es aprender algo nuevo.', 'Refaire un niveau déjà réussi ne rapporte rien : ce qui compte, c’est d’apprendre quelque chose de nouveau.'],
+  'mk.title': ['Mercado', 'Marché'], 'mk.price': ['Hoy, 1 Cristal cuesta', 'Aujourd’hui, 1 Cristal coûte'], 'mk.yest': ['ayer: {p}', 'hier : {p}'],
+  'mk.note': ['El precio cambia un poco cada día, entre 90 y 110. Si vendes un Cristal recuperas el 80 %: cambiar y deshacer el cambio sale caro, como en un mercado de verdad.', 'Le prix change un peu chaque jour, entre 90 et 110. Si tu vends un Cristal, tu récupères 80 % : échanger puis revenir en arrière coûte cher, comme sur un vrai marché.'],
+  'mk.buy': ['Comprar 1 Cristal', 'Acheter 1 Cristal'], 'mk.sell': ['Vender 1 Cristal', 'Vendre 1 Cristal'],
+  'mk.buyQ': ['¿Cambiar {p} de Energía por 1 Cristal?', 'Échanger {p} d’Énergie contre 1 Cristal ?'],
+  'mk.sellQ': ['¿Vender 1 Cristal por {p} de Energía?', 'Vendre 1 Cristal contre {p} d’Énergie ?'],
+  'mk.sellW': ['Hoy, volver a comprarlo te costaría {q}.', 'Aujourd’hui, le racheter te coûterait {q}.'],
+  'mk.do': ['Cambiar', 'Échanger'], 'mk.done': ['Cambio hecho', 'Échange effectué'],
+  'mk.noE': ['Te faltan {n} de Energía', 'Il te manque {n} d’Énergie'], 'mk.noC': ['No tienes Cristales', 'Tu n’as pas de Cristal'],
+  'hu.title': ['Hucha', 'Tirelire'],
+  'hu.lead': ['Guarda Energía unos días y te devuelve más. Si la rompes antes de tiempo, recuperas lo tuyo, pero sin premio.', 'Mets de l’Énergie de côté quelques jours et elle te rend davantage. Si tu la casses avant la fin, tu récupères ta mise, mais sans bonus.'],
+  'hu.amount': ['¿Cuánta Energía guardas?', 'Combien d’Énergie mets-tu de côté ?'], 'hu.term': ['¿Cuántos días?', 'Combien de jours ?'],
+  'hu.days': ['{d} días', '{d} jours'], 'hu.preview': ['El {f} recogerás {n} de Energía: tus {a} y {i} de premio.', 'Le {f}, tu récupéreras {n} d’Énergie : tes {a} et {i} de bonus.'],
+  'hu.save': ['Guardar en la hucha', 'Mettre dans la tirelire'], 'hu.min': ['Elige una cantidad entre {a} y {b}.', 'Choisis un montant entre {a} et {b}.'],
+  'hu.poor': ['Necesitas al menos {n} de Energía para abrir una hucha.', 'Il te faut au moins {n} d’Énergie pour ouvrir une tirelire.'],
+  'hu.full': ['Ya tienes {n} huchas abiertas. Cuando recojas una podrás abrir otra.', 'Tu as déjà {n} tirelires ouvertes. Quand tu en récupéreras une, tu pourras en ouvrir une autre.'],
+  'hu.left': ['faltan {n} días', 'encore {n} jours'], 'hu.left1': ['falta 1 día', 'encore 1 jour'], 'hu.leftH': ['faltan unas horas', 'encore quelques heures'],
+  'hu.ready': ['¡lista para recoger!', 'prête à récupérer !'], 'hu.collect': ['Recoger {n}', 'Récupérer {n}'], 'hu.break': ['Romper', 'Casser'],
+  'hu.breakQ': ['¿Romper la hucha?', 'Casser la tirelire ?'], 'hu.breakW': ['Recuperas {a} de Energía, pero pierdes el premio de {i}. Faltaba poco: {x}.', 'Tu récupères {a} d’Énergie, mais tu perds le bonus de {i}. Il ne restait plus beaucoup : {x}.'],
+  'hu.broken': ['Hucha rota: recuperas {a} de Energía', 'Tirelire cassée : tu récupères {a} d’Énergie'], 'hu.got': ['¡Hucha recogida! Recibes {n} de Energía', 'Tirelire récupérée ! Tu reçois {n} d’Énergie'],
+  'hu.saved': ['Guardado en la hucha', 'Mis dans la tirelire'], 'hu.bar': ['Tiempo que lleva guardada', 'Temps écoulé'],
+  'mv2.title': ['Movimientos', 'Mouvements'], 'mv2.none': ['Todavía no hay movimientos.', 'Aucun mouvement pour l’instant.'], 'mv2.all': ['Ver todos', 'Tout voir'],
+  'l.dia': ['Práctica del día · {x}', 'Entraînement du jour · {x}'], 'l.oferta': ['Oferta del día · {x}', 'Offre du jour · {x}'],
+  'l.buyC': ['Mercado · Cristal comprado', 'Marché · Cristal acheté'], 'l.sellC': ['Mercado · Cristal vendido', 'Marché · Cristal vendu'],
+  'l.huIn': ['Hucha · guardado {d} días', 'Tirelire · {d} jours'], 'l.huOut': ['Hucha · recogida con premio', 'Tirelire · récupérée avec bonus'], 'l.huBreak': ['Hucha · rota antes de tiempo', 'Tirelire · cassée avant la fin'],
+  'l.buy': ['Compra · {x}', 'Achat · {x}'], 'l.logro': ['Logro en {x}', 'Succès dans {x}'], 'l.refl': ['Reflexión validada', 'Réflexion validée'],
+  /* pasaporte y títulos */
+  'pas.title': ['Pasaporte de saberes', 'Passeport des savoirs'], 'pas.lead': ['Lo que sabe hacer y dónde lo demostró.', 'Ce que je sais faire et où je l’ai montré.'],
+  'pas.print': ['Imprimir', 'Imprimer'], 'pas.count': ['{a} de {b}', '{a} sur {b}'], 'pas.skills': ['Saberes', 'Savoirs'],
+  'pas.where': ['Demostrado en {x} · {f}', 'Démontré dans {x} · {f}'], 'pas.todo': ['Se demuestra en {x}', 'À démontrer dans {x}'],
+  'pas.ok': ['Demostrado', 'Démontré'], 'pas.no': ['Pendiente', 'À venir'], 'pas.pending': ['Por demostrar ({n})', 'À démontrer ({n})'], 'pas.fr': ['Francia', 'France'], 'pas.es': ['España', 'Espagne'],
+  'pas.curr': ['La equivalencia con los programas escolares de Francia y España es orientativa.', 'La correspondance avec les programmes scolaires de France et d’Espagne est indicative.'],
+  'pas.empty': ['Todavía no hay saberes demostrados.', 'Aucun savoir démontré pour l’instant.'], 'pas.date': ['Pasaporte del {f}', 'Passeport du {f}'],
+  'tit.title': ['Títulos', 'Titres'], 'tit.lead': ['Se ganan, no se compran. Elige hasta tres para lucirlos junto a tu nombre.', 'Ils se gagnent, ils ne s’achètent pas. Choisis-en jusqu’à trois à afficher à côté de ton prénom.'],
+  'tit.on': ['Luciendo', 'Affiché'], 'tit.wear': ['Lucir', 'Afficher'], 'tit.max': ['Puedes lucir tres a la vez: quita uno primero.', 'Tu peux en afficher trois à la fois : retires-en un d’abord.'],
+  /* yo: avatar, fondos */
+  'yo.title': ['Mi avatar', 'Mon avatar'], 'yo.bg': ['Fondo de la Estación', 'Fond de la Station'], 'yo.name': ['Mi nombre', 'Mon prénom'],
+  'yo.gen': ['Mis títulos, en', 'Mes titres, au'], 'yo.gen.m': ['masculino', 'masculin'], 'yo.gen.f': ['femenino', 'féminin'], 'yo.gen.n': ['neutro', 'neutre'],
+  'yo.lead': ['Cambia lo que quieras. Las piezas con precio se compran una vez y son tuyas para siempre.', 'Change ce que tu veux. Les pièces payantes s’achètent une fois et sont à toi pour toujours.'],
+  'shop.have': ['Tuyo', 'À toi'], 'shop.using': ['Puesto', 'Porté'], 'shop.active': ['En uso', 'Actif'],
+  'shop.buyQ': ['¿Comprar «{x}»?', 'Acheter « {x} » ?'], 'shop.buy': ['Comprar', 'Acheter'], 'shop.bought': ['¡Comprado! Ya es tuyo.', 'Acheté ! C’est à toi.'],
+  'shop.cost': ['Cuesta', 'Prix :'], 'shop.after': ['Te quedarán', 'Il te restera'],
+  'shop.poorE': ['Te faltan {n} de Energía. Sigue jugando y vuelve.', 'Il te manque {n} d’Énergie. Continue à jouer et reviens.'],
+  'shop.poorC': ['Te faltan {n} Cristales. Se ganan con los grandes hitos o en el mercado.', 'Il te manque {n} Cristaux. Ils se gagnent avec les grandes étapes ou au marché.'],
+  'p.eco': ['Valor de los logros', 'Valeur des succès'], 'p.ecoHelp': ['Sube o baja la Energía que da cada logro nuevo, de ×0,5 a ×2. Lo ya ganado no cambia.', 'Augmente ou diminue l’Énergie donnée par chaque nouveau succès, de ×0,5 à ×2. Ce qui est déjà gagné ne change pas.'],
+  'r.wallet': ['Monedero', 'Bourse'], 'r.walletN': ['{e} de Energía y {c} Cristales ganados', '{e} d’Énergie et {c} Cristaux gagnés'],
   /* mudanza */
   'mv.title': ['Traer tus partidas', 'Récupérer tes parties'], 'mv.lead': ['Estas partidas vienen de la dirección antigua de la Estación. ¿Las guardamos aquí?', 'Ces parties viennent de l’ancienne adresse de la Station. On les enregistre ici ?'],
   'mv.keep': ['Ya tenías una partida más avanzada aquí: se queda la de aquí.', 'Tu avais déjà une partie plus avancée ici : on garde celle d’ici.'],
@@ -150,7 +227,8 @@ function applyStatic() {
   $$('[data-t]').forEach(e => { e.textContent = t(e.dataset.t); });
   $('#noteIn').placeholder = t('notes.ph'); $('#noteIn').setAttribute('aria-label', t('notes.ph'));
   $('#dueChips').setAttribute('aria-label', t('due.group')); $('#dueDate').setAttribute('aria-label', t('due.other'));
-  $('#btnSet').setAttribute('aria-label', t('set.title')); $('#lvl').title = t('lvl.title'); $('#bpts').title = t('bp.title');
+  $('#btnSet').setAttribute('aria-label', t('set.title')); $('#lvl').title = t('lvl.title');
+  $('#nav').setAttribute('aria-label', t('nav.label')); $('#navTop').setAttribute('aria-label', t('nav.label'));
   $('#lgLang').textContent = t('lang.switch');
 }
 function setLang(l) { L = S.lang = l; save(); applyStatic(); if (!$('#main').hidden) { tick(); renderAll(); } }
@@ -278,18 +356,18 @@ let remoteProg = {};
 function bestProgress(g) { const loc = g.read(); const rem = remoteProg[g.id]; if (!rem) return loc; if (!loc) return rem; return (rem.xp || 0) > (loc.xp || 0) || (rem.done || 0) > (loc.done || 0) ? rem : loc; }
 function renderGames() {
   let totalXP = 0;
+  const ganado = {}; S.led.forEach(x => { if (x.g && x.e > 0) ganado[x.g] = (ganado[x.g] || 0) + x.e; });
   $('#games').innerHTML = GAMES.map(g => {
     const p = bestProgress(g); if (p) totalXP += p.xp || 0; const pct = p && p.total ? Math.round(p.done / p.total * 100) : 0;
     return `<article class="game" style="--gc:${esc(g.color)}"><div><h3>${esc(g.name)}</h3><div class="sub">${esc(pick2(g.sub))}</div></div>
       ${p ? `${p.total ? `<div class="pb" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(t('games.progress'))}"><i style="width:${pct}%"></i></div>` : ''}
-        <div class="meta">${p.label ? `<span>${esc(p.label)}</span>` : ''}${p.total ? `<span>${p.done}/${p.total} ${esc(pick2(g.unit || ['misiones', 'missions']))}</span>` : ''}${p.xp ? `<span>${p.xp} XP</span>` : ''}${p.stars ? `<span>★ ${p.stars}</span>` : ''}${p.medals ? `<span>🏅 ${p.medals}</span>` : ''}</div>`
+        <div class="meta">${p.label ? `<span>${esc(p.label)}</span>` : ''}${p.total ? `<span>${p.done}/${p.total} ${esc(pick2(g.unit || ['misiones', 'missions']))}</span>` : ''}${p.xp ? `<span>${p.xp} XP</span>` : ''}${p.stars ? `<span>★ ${p.stars}</span>` : ''}${p.medals ? `<span>🏅 ${p.medals}</span>` : ''}</div>${ganado[g.id] ? `<div class="gearn">${cur(ganado[g.id], 'e')} ${esc(t('games.earned'))}</div>` : ''}`
         : `<div class="meta"><span>${esc(t('games.none'))}</span></div>`}
       <a class="btn ${p ? 'pri' : ''}" href="${esc(g.url)}">${esc(p ? t('games.play') : t('games.start'))}</a></article>`;
   }).join('');
   const bp = bitaPoints(); totalXP += bp;
   const lv = 1 + Math.floor(totalXP / 500), rest = totalXP % 500;
   $('#lvN').textContent = lv; $('#lvT').textContent = t('lvl.text', { xp: totalXP, n: lv }); $('#lvB').style.width = (rest / 5) + '%';
-  $('#bptsN').textContent = bp;
 }
 async function pushProgress() {
   if (!cloudOn() || ME.role === 'padre') return; const rows = [];
@@ -338,6 +416,7 @@ function detect() {
     if (!prev) return;                          // primera vez: no se comenta todo el pasado
     let d = null; try { d = g.diff(prev, cur); } catch (e) { d = null; }
     if (!d) return;
+    if (!avances.includes(g.id)) avances.push(g.id);          // cuenta para la práctica y la oferta del día
     const key = g.id + ':' + d.topic;
     const last = S.bita.find(x => x.estado === 'nueva' && x.game === g.id && x.topic === d.topic);
     if (last) { last.n = (last.n || 0) + (d.n || 0); last.xp = (last.xp || 0) + (d.xp || 0); last.hard = last.hard || d.hard; last.at = now; added = true; return; }
@@ -550,7 +629,9 @@ function buildReport(offset) {
   const val = refl.filter(r => r.estado === 'validada'), pts = val.reduce((x, r) => x + r.puntos, 0);
   const talk = (val.slice().sort((x, y) => y.puntos - x.puntos)[0] || refl[0] || null);
   const due = S.notes.filter(n => !n.done && n.due && n.due < ymd(new Date()));
-  return { a, b, mon, games, topics, refl, val, pts, talk, due, rut: rutinatorWeek(a, b), name: childName() };
+  const gan = S.led.filter(x => !x.w && x.at && ts(x.at) >= a && ts(x.at) <= b && !/^(hucha|cambio|buy):/.test(x.k));
+  const wal = { e: gan.reduce((x, y) => x + Math.max(0, y.e || 0), 0), c: gan.reduce((x, y) => x + Math.max(0, y.c || 0), 0) };
+  return { a, b, mon, games, topics, refl, val, pts, talk, due, wal, rut: rutinatorWeek(a, b), name: childName() };
 }
 function reportText(R) {
   const L1 = [], fd = d => new Date(d + 'T12:00').toLocaleDateString(LOC(), { day: 'numeric', month: 'long' });
@@ -560,6 +641,7 @@ function reportText(R) {
   else L1.push('• ' + t('r.noGames'));
   if (R.topics.length) { L1.push('', t('r.topics')); R.topics.forEach(x => L1.push('• ' + x)); }
   L1.push('', t('r.refl'), '• ' + t('r.reflN', { n: R.refl.length, v: R.val.length, p: R.pts }));
+  if (R.wal.e || R.wal.c) L1.push('', t('r.wallet'), '• ' + t('r.walletN', R.wal));
   if (R.rut) L1.push('', 'Rutinator', '• ' + t('r.rut', { p: R.rut.pct, ok: R.rut.ok, n: R.rut.exp, c: R.rut.earned }));
   if (R.due.length) L1.push('', t('r.due'), ...R.due.map(n => '• ' + n.title));
   if (R.talk) L1.push('', t('r.talk'), '«' + R.talk.pregunta + '»');
@@ -574,6 +656,7 @@ function reportHTML() {
     <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="stat"><b>${R.games.reduce((x, g) => x + g.xp, 0)}</b><span>XP</span></div><div class="stat"><b>${R.refl.length}</b><span>${esc(t('r.reflS'))}</span></div><div class="stat"><b>${R.pts}</b><span>${esc(t('book.points'))}</span></div></div>
     <div class="set-sec"><h4>${esc(t('r.games'))}</h4>${R.games.length ? `<ul class="rlist">${R.games.map(x => `<li class="ritem"><b>${esc(x.g.name)}</b> <span class="muted">+${x.xp} XP${x.done ? ` · ${esc(t('r.units', { n: x.done, u: pick2(x.g.unit || ['misiones', 'missions']) }))}` : ''}${x.days ? ` · ${esc(x.days === 1 ? t('r.day') : t('r.days', { n: x.days }))}` : ''}</span></li>`).join('')}</ul>` : `<p class="empty">${esc(t('r.noGames'))}</p>`}</div>
     ${R.topics.length ? `<div class="set-sec"><h4>${esc(t('r.topics'))}</h4><p>${R.topics.map(esc).join('<br>')}</p></div>` : ''}
+    ${R.wal.e || R.wal.c ? `<div class="set-sec"><h4>${esc(t('r.wallet'))}</h4><p>${esc(t('r.walletN', R.wal))}</p></div>` : ''}
     ${R.rut ? `<div class="set-sec"><h4>Rutinator</h4><p>${esc(t('r.rut', { p: R.rut.pct, ok: R.rut.ok, n: R.rut.exp, c: R.rut.earned }))}</p></div>` : ''}
     ${R.due.length ? `<div class="set-sec"><h4>${esc(t('r.due'))}</h4><p>${R.due.map(n => esc(n.title)).join('<br>')}</p></div>` : ''}
     ${R.talk ? `<div class="set-sec"><h4>${esc(t('r.talk'))}</h4><p class="mdato" style="margin:0">«${esc(R.talk.pregunta)}»<br><span class="small">${esc(R.talk.respuesta.slice(0, 220))}${R.talk.respuesta.length > 220 ? '…' : ''}</span></p></div>` : ''}
@@ -599,6 +682,7 @@ function showParent(tab) {
     : tab === 'inf' ? reportHTML()
     : tab === 'hist' ? (done.length ? `<ul class="rlist">${done.map(reflItem).join('')}</ul>` : `<p class="empty">${esc(t('p.noneH'))}</p>`)
     : `<p>${esc(S.mentorOff ? t('p.mentorOff') : t('p.mentorOn'))}</p><div class="row" style="justify-content:flex-start"><button class="btn" id="pTog">${esc(t('p.toggle'))}</button></div>
+       <div class="set-sec"><h4 id="pMultL">${esc(t('p.eco'))}</h4><p class="muted small">${esc(t('p.ecoHelp'))}</p><div class="seg" role="group" aria-labelledby="pMultL">${[0.5, 0.75, 1, 1.5, 2].map(m => `<button type="button" data-mult="${m}" aria-pressed="${S.mult === m}">×${String(m).replace('.', ',')}</button>`).join('')}</div></div>
        <div class="set-sec"><h4>${esc(t('p.links'))}</h4><button class="btn" id="pLinks">${esc(t('p.editLinks'))}</button></div>`;
   modal(`<h3>${esc(t('p.title'))}</h3><div class="tabs" role="tablist">
       <button role="tab" aria-selected="${tab === 'pend'}" data-tab="pend">${esc(t('p.pending'))}${pend.length ? ` (${pend.length})` : ''}</button>
@@ -610,7 +694,8 @@ function showParent(tab) {
     $$('#sheet [data-tab]').forEach(b => b.onclick = () => showParent(b.dataset.tab));
     if (tab === 'inf') bindReport();
     const tg = $('#pTog'); if (tg) tg.onclick = () => { S.mentorOff = !S.mentorOff; save(); renderMentor(); showParent('set'); };
-    const pl = $('#pLinks'); if (pl) pl.onclick = () => { close(); editLinks = true; renderLinks(); location.hash = '#cole'; };
+    $$('#sheet [data-mult]').forEach(b => b.onclick = () => { S.mult = Number(b.dataset.mult); save(); showParent('set'); renderNuevo(); if (VIEW === 'juegos') renderOferta(); });
+    const pl = $('#pLinks'); if (pl) pl.onclick = () => { close(); editLinks = true; go('inicio', true); renderLinks(); const c = $('#cole'); if (c) c.scrollIntoView(); };
     $$('#sheet .rev [data-p]').forEach(b => b.onclick = async () => {
       const li = b.closest('.rev'), id = li.dataset.id, note = li.querySelector('textarea').value.trim(), msg = li.querySelector('.msg');
       const back = b.dataset.p === 'back'; if (back && !note) { msg.textContent = t('p.needNote'); return; }
@@ -618,7 +703,7 @@ function showParent(tab) {
       $$('#sheet .rev [data-p]').forEach(x => (x.disabled = true));
       const ok = await reviewRefl(id, estado, puntos, note, m => { msg.textContent = t('p.err', { x: m }); });
       $$('#sheet .rev [data-p]').forEach(x => (x.disabled = false));
-      if (ok) { toast(t('p.done')); showParent('pend'); renderMentor(); renderGames(); }
+      if (ok) { toast(t('p.done')); showParent('pend'); renderMentor(); renderGames(); ganar(); }
     });
   }, true);
 }
@@ -802,6 +887,263 @@ function renderRut() {
   $('#rutBox').innerHTML = `<div class="stats"><div class="stat">${ring(k.done, k.total)}<span>${esc(t('rut.tasks', { a: k.done, b: k.total }))}</span></div><div class="stat"><b>${r.credits ?? '–'}</b><span>${esc(t('rut.credits'))}</span></div><div class="stat"><b>⭐ ${r.stars ?? '–'}</b><span>${esc(t('rut.stars'))}</span></div></div>${r.hucha != null ? `<p class="muted small" style="margin:10px 0 0;text-align:center">🐷 ${esc(t('rut.hucha', { n: r.hucha }))}</p>` : ''}${open}`;
 }
 
+/* =================== MONEDERO: el libro de puntos =================== */
+/* Las reglas (cuánto vale cada cosa) están en economia.js. Aquí se apunta cada logro una sola vez:
+   la clave del apunte es única, así que repetir un nivel o abrir la Estación dos veces no paga de nuevo. */
+const SVG_E = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L5 13h6l-1 9 8-12h-6z" fill="currentColor"/></svg>';
+const SVG_C = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l4 6-10 12L2 9z" fill="currentColor"/></svg>';
+const SVG_H = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a7 6 0 0 1 7-6h3a6 6 0 0 1 5.7 4H21v4h-1.6a6 6 0 0 1-2.4 2.6V19h-3v-1.5h-3V19H8v-2.3A6 6 0 0 1 4 12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 6.5h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16.5" cy="11" r="1" fill="currentColor"/></svg>';
+const JCOL = { 'chrono-ohm': '#f2a65a', pitagoras: '#ffd27a', philoquest: '#7ec8ff', umbral: '#c77dff', refugio: '#6fd99a', cuaderno: '#5ee0ff', '': '#ffd27a' };
+const num = n => (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString(LOC());
+/* cantidad con su icono; sign: pone el + delante de lo ganado */
+const cur = (n, k, sign) => `<span class="cur ${k}${n < 0 ? ' neg' : ''}">${k === 'e' ? SVG_E : SVG_C}<b>${sign && n > 0 ? '+' : ''}${num(n)}</b><span class="sr"> ${esc(t(k === 'e' ? 'w.energy' : 'w.crystals'))}</span></span>`;
+const coste = p => (p ? (p.e ? cur(p.e, 'e') : '') + (p.c ? cur(p.c, 'c') : '') : '');
+const hoy = () => ymd(new Date());
+const saldoAhora = () => ECO.saldo(S.led);
+const jname = g => (ECO.JUEGOS[g] ? tt(ECO.JUEGOS[g]) : 'Curionaut');
+const esPadre = () => !!(ME && ME.role === 'padre');
+const LBL = {};            // clave del logro → su texto (se rellena al leer las partidas)
+let avances = [];          // juegos en los que detect() acaba de ver un avance
+function nombrePieza(slot, id) {
+  if (slot === 'fondo') { const f = ARTE.FONDOS.find(x => x.id === id); return f ? tt(f.n) : id; }
+  const g = ARTE.GRUPOS.find(x => x.id === slot), o = ARTE.pieza(slot, id);
+  return o && o.n ? `${g ? tt(g.n) + ' · ' : ''}${tt(o.n)}` : (g ? tt(g.n) : slot);
+}
+function etiqueta(x) {
+  const k = x.k || ''; let m;
+  if (LBL[k]) return tt(LBL[k]);
+  if ((m = /^dia:[^:]+:(.+)$/.exec(k))) return t('l.dia', { x: jname(m[1]) });
+  if (/^oferta:/.test(k)) return t('l.oferta', { x: jname(x.g) });
+  if (/^cambio:/.test(k)) return t(x.c > 0 ? 'l.buyC' : 'l.sellC');
+  if ((m = /^hucha:[^:]+:(in|out)$/.exec(k))) return m[1] === 'in' ? t('l.huIn', { d: (x.x && x.x.d) || 3 }) : t(x.x && x.x.premio > 0 ? 'l.huOut' : 'l.huBreak');
+  if ((m = /^buy:([^:]+):(.+)$/.exec(k))) return t('l.buy', { x: nombrePieza(m[1], m[2]) });
+  if (/^refl:/.test(k)) return t('l.refl');
+  return t('l.logro', { x: jname(x.g) });
+}
+/* la oferta del día se decide una vez al día: el juego en el que hace más tiempo que no gana nada */
+function ofertaHoy() {
+  const d = hoy(); if (S.oferta && S.oferta.d === d && GAMES.some(g => g.id === S.oferta.g)) return S.oferta.g;
+  const ult = {}; S.led.forEach(x => { if (x.g && x.at && !x.w && GAMES.some(g => g.id === x.g)) { const k = ymd(new Date(x.at)); if (!ult[x.g] || k > ult[x.g]) ult[x.g] = k; } });
+  S.oferta = { d, g: ECO.ofertaDelDia(ult, GAMES.map(g => g.id), d) }; save(); return S.oferta.g;
+}
+/* títulos recién ganados: se apunta la fecha y, si hay sitio, se lucen solos */
+function titulosNuevos() {
+  const tg = ECO.titulosGanados(S.led), nt = tg.filter(id => !S.titAt[id]);
+  nt.forEach(id => { S.titAt[id] = Date.now(); if (S.tit.length < 3 && !S.tit.includes(id)) S.tit.push(id); });
+  S.tit = S.tit.filter(id => tg.includes(id)).slice(0, 3);
+  return nt;
+}
+/* mira las partidas y apunta lo que falte. La primera vez paga de golpe todo lo conseguido hasta hoy (apuntes con w). */
+function apuntar() {
+  if (esPadre()) { avances = []; return { nuevos: [], titulos: [], primera: false }; }
+  const now = Date.now(), d = hoy(), have = new Set(S.led.map(x => x.k)), nuevos = [], primera = !S.ecoAt;
+  const add = (k, e, c, g) => { if (have.has(k)) return; const x = { k, e: ECO.escala(e || 0, S.mult), c: c || 0, g: g || '', at: now }; if (primera) x.w = 1; S.led.push(x); have.add(k); nuevos.push(x); };
+  let cand = []; try { cand = ECO.logros(ECO.hechos(read)); } catch (e) { cand = []; }
+  try { cand = cand.concat(ECO.logrosReflexion(S.refl, ymd)); } catch (e) {}
+  cand.forEach(a => { LBL[a.k] = a.l; add(a.k, a.e, a.c, a.g); });
+  if (!primera && avances.length) { const of = ofertaHoy(); avances.forEach(g => { add(`dia:${d}:${g}`, ECO.V.dia, 0, g); if (g === of) add(`oferta:${d}`, ECO.V.oferta, 0, g); }); }
+  avances = [];
+  if (primera) S.ecoAt = now;
+  const titulos = titulosNuevos();
+  if (nuevos.length || titulos.length || primera) save();
+  return { nuevos, titulos, primera };
+}
+/* un movimiento hecho a mano: mercado, hucha o una compra */
+function mover(x) {
+  S.led.push(Object.assign({ e: 0, c: 0, g: '', at: Date.now() }, x));
+  const nt = titulosNuevos(); save(); renderWallet(); renderHero(); renderNuevo();
+  if (nt.length) setTimeout(() => toast(`${t('new.title')}: ${tituloTxt(nt[0])}`), 3000);
+}
+const tituloTxt = id => { const x = ECO.TITULOS.find(y => y.id === id); return x ? ECO.nombreTitulo(x, L, S.gen) : ''; };
+/* apunta lo nuevo y avisa con un mensaje corto */
+function ganar(quiet) {
+  const r = apuntar();
+  if (!quiet && (r.nuevos.length || r.titulos.length)) { renderWallet(); renderHero(); renderNuevo(); renderGames(); if (VIEW !== 'inicio') renderView(); }
+  if (!r.primera && r.nuevos.length) {
+    const e = r.nuevos.reduce((a, x) => a + x.e, 0), c = r.nuevos.reduce((a, x) => a + x.c, 0);
+    toast(`${e ? `+${e} ⚡ ` : ''}${c ? `+${c} 💎 ` : ''}· ${etiqueta(r.nuevos[0])}${r.nuevos.length > 1 ? ' ' + t('new.more', { n: r.nuevos.length - 1 }) : ''}`);
+  } else if (!r.primera && r.titulos.length) toast(`${t('new.title')}: ${tituloTxt(r.titulos[0])}`);
+  return r;
+}
+function confirma(html, okTxt, onOk) {
+  modal(`${html}<div class="row"><button class="btn" id="cfNo">${esc(t('btn.cancel'))}</button><button class="btn pri" id="cfOk">${esc(okTxt)}</button></div>`, close => { $('#cfNo').onclick = close; $('#cfOk').onclick = () => { close(); onOk(); }; });
+}
+
+/* =================== PANTALLAS =================== */
+const VIEWS = ['inicio', 'juegos', 'monedero', 'pasaporte', 'yo'];
+let VIEW = 'inicio';
+function go(v, keep) {
+  if (!VIEWS.includes(v)) v = 'inicio'; VIEW = v;
+  VIEWS.forEach(x => { $('#v-' + x).hidden = x !== v; });
+  $$('nav [data-go]').forEach(a => { const on = a.dataset.go === v; a.classList.toggle('on', on); if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  $('#hero').classList.toggle('mini', v !== 'inicio');
+  renderView();
+  if (!keep) { try { scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { scrollTo(0, 0); } }
+  if (!/^#mudanza=/.test(location.hash)) { try { history.replaceState(null, '', v === 'inicio' ? location.pathname + location.search : '#' + v); } catch (e) {} }
+}
+function renderView() {
+  if (VIEW === 'juegos') renderOferta(); else if (VIEW === 'monedero') renderMonedero(); else if (VIEW === 'pasaporte') renderPasaporte(); else if (VIEW === 'yo') renderYo();
+}
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('[data-go]'); if (!a || $('#main').hidden) return; e.preventDefault(); go(a.dataset.go); });
+addEventListener('hashchange', () => { const h = location.hash.slice(1); if (VIEWS.includes(h) && h !== VIEW && !$('#main').hidden) go(h); });
+addEventListener('beforeprint', () => { if (!$('#main').hidden) renderPasaporte(); });
+
+function aplicaFondo() { $('#fondo').className = 'fx f-' + S.fondo; }
+function renderWallet() {
+  const s = saldoAhora(), w = $('#wal'); $('#wE').textContent = num(s.e); $('#wC').textContent = num(s.c);
+  w.title = t('w.title', { e: num(s.e), c: num(s.c) });
+}
+const chipsTitulos = () => S.tit.map(id => ECO.TITULOS.find(x => x.id === id)).filter(Boolean).map(x => `<span class="tchip" style="--tc:${JCOL[x.g] || JCOL['']}">${esc(ECO.nombreTitulo(x, L, S.gen))}</span>`).join('');
+function renderHero() {
+  const a = $('#heroAv'); a.innerHTML = ARTE.avatar(S.av); a.setAttribute('aria-label', t('yo.title'));
+  $('#heroTit').innerHTML = chipsTitulos();
+}
+
+/* ---------- Inicio: novedades ---------- */
+function renderNuevo() {
+  const box = $('#nuevoBox'); if (!box) return;
+  const gan = S.led.filter(x => (x.e > 0 || x.c > 0) && !/^(hucha|cambio):/.test(x.k));
+  const bienv = gan.filter(x => x.w), rec = gan.filter(x => !x.w).map((x, i) => ({ x, i })).sort((a, b) => (b.x.at - a.x.at) || (b.i - a.i)).map(o => o.x);
+  const of = GAMES.find(g => g.id === ofertaHoy()), ofDone = S.led.some(x => x.k === 'oferta:' + hoy());
+  const tNew = Object.keys(S.titAt).filter(id => Date.now() - S.titAt[id] < 5 * 864e5 && !(bienv.length && !rec.length)).sort((a, b) => S.titAt[b] - S.titAt[a]).slice(0, 2);
+  let html = '';
+  if (rec.length) html = `<p class="muted small" style="margin:0 0 8px">${esc(t('new.last'))}</p><ul class="nlist">${rec.slice(0, 4).map(movItem).join('')}</ul>`;
+  else if (bienv.length) { const e = bienv.reduce((a, x) => a + x.e, 0), c = bienv.reduce((a, x) => a + x.c, 0);
+    html = `<p style="margin:0 0 10px">${esc(t('new.welcome'))}</p><div class="nbig">${e ? cur(e, 'e', 1) : ''}${c ? cur(c, 'c', 1) : ''}</div>`; }
+  else html = `<p style="margin:0">${esc(t('new.start'))}</p>`;
+  if (tNew.length) html += `<ul class="nlist" style="margin-top:8px">${tNew.map(id => `<li><div class="nl"><small>${esc(t('new.title'))}</small><b>${esc(tituloTxt(id))}</b></div><a class="btn sm" href="#pasaporte" data-go="pasaporte">${esc(t('nav.pasaporte'))}</a></li>`).join('')}</ul>`;
+  if (of && !ofDone && !esPadre()) html += `<p class="noffer"><a href="#juegos" data-go="juegos">${esc(t('new.offer', { n: ECO.escala(ECO.V.oferta, S.mult), x: of.name }))}</a></p>`;
+  html += `<div class="nfoot">${gan.length ? `<a class="btn sm" href="#monedero" data-go="monedero">${esc(t('new.wallet'))}</a>` : `<a class="btn sm pri" href="#juegos" data-go="juegos">${esc(t('new.games'))}</a>`}</div>`;
+  box.innerHTML = html;
+}
+const movItem = x => `<li><div class="nl">${esc(etiqueta(x))}<small>${esc(fmtShort(x.at))}</small></div><div class="nv">${x.e ? cur(x.e, 'e', 1) : ''}${x.c ? cur(x.c, 'c', 1) : ''}</div></li>`;
+
+/* ---------- Juegos: oferta del día ---------- */
+function renderOferta() {
+  const el = $('#oferta'); if (!el) return; const g = GAMES.find(x => x.id === ofertaHoy()); if (!g || esPadre()) { el.hidden = true; return; }
+  const done = S.led.some(x => x.k === 'oferta:' + hoy()), n = ECO.escala(ECO.V.oferta, S.mult); el.hidden = false;
+  el.className = 'card c-oferta' + (done ? ' done' : '');
+  el.innerHTML = `<div class="ot"><h2><span class="ico">${SVG_E}</span>${esc(t('of.title'))}</h2><p>${esc(done ? t('of.done') : t('of.text', { x: g.name, n }))}</p>${done ? '' : `<p class="muted small">${esc(t('of.why'))}</p>`}</div>${done ? '' : `<a class="btn pri" href="${esc(g.url)}">${esc(t('of.go', { x: g.name }))}</a>`}`;
+}
+
+/* ---------- Monedero: saldos, mercado, hucha y movimientos ---------- */
+let huAmt = 0, huD = 7;
+function renderMonedero() {
+  const box = $('#monBox'); if (!box) return;
+  const s = saldoAhora(), d = hoy(), p = ECO.precio(d), v = ECO.venta(d), ayer = ECO.precio(ymd(addDays(new Date(), -1))), now = Date.now();
+  const deps = ECO.depositos(S.led, now).filter(x => !x.cerrada), enH = deps.reduce((a, x) => a + x.e, 0);
+  const H = ECO.HUCHA, maxA = Math.min(H.max, s.e), puede = s.e >= H.min && deps.length < H.abiertas;
+  if (!huAmt) huAmt = 100; if (puede) huAmt = Math.max(H.min, Math.min(maxA, huAmt));
+  const corta = ts => new Date(ts).toLocaleDateString(LOC(), { day: 'numeric', month: 'short' });
+  const falta = x => { const h = (x.fin - now) / 36e5; return x.lista ? t('hu.ready') : h < 24 ? t('hu.leftH') : Math.ceil(h / 24) === 1 ? t('hu.left1') : t('hu.left', { n: Math.ceil(h / 24) }); };
+  const dep = x => { const pct = Math.max(0, Math.min(100, Math.round((now - x.at) / (x.fin - x.at) * 100)));
+    return `<div class="dep ${x.lista ? 'ready' : ''}"><div class="dh">${cur(x.e, 'e')}<span aria-hidden="true">→</span>${cur(x.e + x.premio, 'e')}<span class="when">${esc(corta(x.fin))} · ${esc(falta(x))}</span></div>
+      <div class="pb" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(t('hu.bar'))}"><i style="width:${pct}%"></i></div>
+      <div class="da">${x.lista ? `<button class="btn pri sm" data-col="${esc(x.id)}">${esc(t('hu.collect', { n: num(x.e + x.premio) }))}</button>` : `<button class="btn sm" data-brk="${esc(x.id)}">${esc(t('hu.break'))}</button>`}</div></div>`; };
+  const movs = S.led.map((x, i) => ({ x, i })).sort((a, b) => (b.x.at - a.x.at) || (b.i - a.i)).map(o => o.x);
+  box.innerHTML = `<div class="mgrid">
+    <section class="card c-saldo full"><h2><span class="ico">${SVG_E}</span>${esc(t('mon.bal'))}</h2>
+      <div class="bal"><div class="bl e">${SVG_E}<b id="balE">${num(s.e)}</b><span>${esc(t('w.energy'))}</span><small>${esc(t('mon.eHelp'))}</small></div>
+        <div class="bl c">${SVG_C}<b id="balC">${num(s.c)}</b><span>${esc(t('w.crystals'))}</span><small>${esc(t('mon.cHelp'))}</small></div>
+        <div class="bl h">${SVG_H}<b id="balH">${num(enH)}</b><span>${esc(t('mon.saved'))}</span><small>${esc(t('mon.savedHelp'))}</small></div></div>
+      <details class="how"><summary>${esc(t('how.title'))}</summary><ul>${[1, 2, 3, 4, 5].map(i => `<li>${esc(t('how.' + i))}</li>`).join('')}</ul></details></section>
+    <section class="card c-mercado"><h2><span class="ico">${SVG_C}</span>${esc(t('mk.title'))}</h2>
+      <div class="mk"><span>${esc(t('mk.price'))}</span>${cur(p, 'e')}<small class="muted">${p > ayer ? '▲' : p < ayer ? '▼' : '='} ${esc(t('mk.yest', { p: ayer }))}</small></div>
+      <div class="mkb"><button class="btn pri" id="mkBuy" ${s.e < p ? 'disabled' : ''}><span>${esc(t('mk.buy'))}</span><small>${s.e < p ? esc(t('mk.noE', { n: p - s.e })) : `−${p} ⚡`}</small></button>
+        <button class="btn" id="mkSell" ${s.c < 1 ? 'disabled' : ''}><span>${esc(t('mk.sell'))}</span><small>${s.c < 1 ? esc(t('mk.noC')) : `+${v} ⚡`}</small></button></div>
+      <p class="muted small" style="margin:12px 0 0">${esc(t('mk.note'))}</p></section>
+    <section class="card c-hucha"><h2><span class="ico">${SVG_H}</span>${esc(t('hu.title'))}</h2>
+      <p class="muted small" style="margin:0 0 10px">${esc(t('hu.lead'))}</p>
+      ${deps.length ? `<div class="deps">${deps.map(dep).join('')}</div>` : ''}
+      ${puede ? `<div class="hform"><label for="huIn">${esc(t('hu.amount'))}</label><input id="huIn" type="number" inputmode="numeric" min="${H.min}" max="${maxA}" step="10" value="${huAmt}">
+        <span class="lab" id="huTL">${esc(t('hu.term'))}</span><div class="seg" role="group" aria-labelledby="huTL">${ECO.PLAZOS.map(z => `<button type="button" data-hd="${z.d}" aria-pressed="${huD === z.d}">${esc(t('hu.days', { d: z.d }))} · +${z.pct} %</button>`).join('')}</div>
+        <p class="hprev" id="huPrev" aria-live="polite"></p><p class="msg" id="huMsg" aria-live="polite"></p><button class="btn pri" id="huGo">${esc(t('hu.save'))}</button></div>`
+      : `<p class="empty">${esc(deps.length >= H.abiertas ? t('hu.full', { n: H.abiertas }) : t('hu.poor', { n: H.min }))}</p>`}</section>
+    <section class="card c-mov full"><h2><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>${esc(t('mv2.title'))}${movs.length > 12 ? `<button class="btn sm act" id="movAll">${esc(t('mv2.all'))}</button>` : ''}</h2>
+      ${movs.length ? `<ul class="nlist">${movs.slice(0, 12).map(movItem).join('')}</ul>` : `<p class="empty">${esc(t('mv2.none'))}</p>`}</section></div>`;
+  const cambio = () => 'cambio:' + Date.now().toString(36);
+  $('#mkBuy').onclick = () => confirma(`<h3>${esc(t('mk.buyQ', { p }))}</h3>`, t('mk.do'), () => { if (saldoAhora().e < p) return; mover({ k: cambio(), e: -p, c: 1 }); toast(t('mk.done')); renderMonedero(); });
+  $('#mkSell').onclick = () => confirma(`<h3>${esc(t('mk.sellQ', { p: v }))}</h3><p class="muted">${esc(t('mk.sellW', { q: p }))}</p>`, t('mk.do'), () => { if (saldoAhora().c < 1) return; mover({ k: cambio(), e: v, c: -1 }); toast(t('mk.done')); renderMonedero(); });
+  const all = $('#movAll'); if (all) all.onclick = () => modal(`<h3>${esc(t('mv2.title'))}</h3><ul class="nlist" style="margin-top:10px">${movs.slice(0, 200).map(movItem).join('')}</ul><div class="row"><button class="btn pri" id="mvX">${esc(t('btn.close'))}</button></div>`, c => { $('#mvX').onclick = c; }, true);
+  $$('#monBox [data-col]').forEach(b => b.onclick = () => { const x = deps.find(y => y.id === b.dataset.col); if (!x || Date.now() < x.fin) return; mover({ k: `hucha:${x.id}:out`, e: x.e + x.premio, x: { d: x.d, premio: x.premio } }); toast(t('hu.got', { n: num(x.e + x.premio) })); renderMonedero(); });
+  $$('#monBox [data-brk]').forEach(b => b.onclick = () => { const x = deps.find(y => y.id === b.dataset.brk); if (!x) return;
+    confirma(`<h3>${esc(t('hu.breakQ'))}</h3><p>${esc(t('hu.breakW', { a: num(x.e), i: num(x.premio), x: falta(x) }))}</p>`, t('hu.break'), () => { mover({ k: `hucha:${x.id}:out`, e: x.e, x: { d: x.d, premio: 0 } }); toast(t('hu.broken', { a: num(x.e) })); renderMonedero(); }); });
+  if (puede) {
+    const inp = $('#huIn'), val = () => Math.floor(Number(inp.value) || 0);
+    const prev = () => { const a = val(), ok = a >= H.min && a <= maxA; $('#huMsg').textContent = '';
+      $('#huPrev').textContent = ok ? t('hu.preview', { f: new Date(Date.now() + huD * 864e5).toLocaleDateString(LOC(), { weekday: 'long', day: 'numeric', month: 'long' }), n: num(a + ECO.interes(a, huD)), a: num(a), i: num(ECO.interes(a, huD)) }) : t('hu.min', { a: H.min, b: maxA }); };
+    inp.oninput = () => { huAmt = val() || huAmt; prev(); };
+    $$('#monBox [data-hd]').forEach(b => b.onclick = () => { huD = Number(b.dataset.hd); $$('#monBox [data-hd]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); prev(); });
+    $('#huGo').onclick = () => { const a = val(); if (!(a >= H.min && a <= maxA)) { $('#huMsg').textContent = t('hu.min', { a: H.min, b: maxA }); inp.focus(); return; }
+      mover({ k: `hucha:${Date.now().toString(36)}:in`, e: -a, x: { d: huD } }); toast(t('hu.saved')); renderMonedero(); };
+    prev();
+  }
+}
+
+/* ---------- Pasaporte: títulos y saberes ---------- */
+const pasOpen = {};        // áreas con «por demostrar» desplegado (se recuerda mientras la Estación está abierta)
+function renderPasaporte() {
+  const box = $('#pasBox'); if (!box) return; const byK = {}; S.led.forEach(x => { byK[x.k] = x; });
+  const gan = ECO.titulosGanados(S.led), name = (ME && ME.display_name) || childName(), hechosN = ECO.SABERES.filter(x => byK[x.k]).length;
+  const tits = ECO.TITULOS.map((x, i) => ({ x, i, got: gan.includes(x.id) })).sort((a, b) => (b.got - a.got) || (a.i - b.i)).map(({ x, got }) => {
+    const on = S.tit.includes(x.id), nm = esc(ECO.nombreTitulo(x, L, S.gen)), st = `style="--tc:${JCOL[x.g] || JCOL['']}"`;
+    return got ? `<button class="tit got ${on ? '' : 'off'}" data-tit="${esc(x.id)}" aria-pressed="${on}" ${st}><b>${nm}</b><small>${esc(jname(x.g))}</small><span class="st">${esc(on ? t('tit.on') : t('tit.wear'))}</span></button>`
+      : `<div class="tit lock" ${st}><b>${nm}</b><small>${esc(tt(x.como))}</small></div>`; }).join('');
+  /* lo demostrado va a la vista; lo que falta, plegado (se abre si se quiere ver) para que la lista no abrume */
+  const saber = x => { const e = byK[x.k], donde = `${jname(x.g)} · ${tt(x.d)}`;
+    return `<li class="${e ? 'ok' : ''}"><span class="ck" aria-hidden="true"></span><div><span class="sr">${esc(t(e ? 'pas.ok' : 'pas.no'))}: </span><div class="st">${esc(tt(x.s))}</div><small>${esc(e ? t('pas.where', { x: donde, f: fmtShort(e.at) }) : t('pas.todo', { x: donde }))}</small><small>${esc(t('pas.fr'))}: ${esc(x.fr)} · ${esc(t('pas.es'))}: ${esc(x.es)}</small></div></li>`; };
+  const areas = ECO.AREAS.map(a => { const list = ECO.SABERES.filter(x => x.a === a.id), ok = list.filter(x => byK[x.k]), no = list.filter(x => !byK[x.k]);
+    return `<div class="area ${ok.length ? '' : 'none'}" style="--ac:${a.c}"><h3><i aria-hidden="true"></i>${esc(tt(a.n))}<span>${esc(t('pas.count', { a: ok.length, b: list.length }))}</span></h3>${ok.length ? `<ul class="sab">${ok.map(saber).join('')}</ul>` : ''}${no.length ? `<details class="pend"${pasOpen[a.id] ? ' open' : ''} data-area="${esc(a.id)}"><summary>${esc(t('pas.pending', { n: no.length }))}</summary><ul class="sab">${no.map(saber).join('')}</ul></details>` : ''}</div>`; }).join('');
+  box.innerHTML = `<section class="card"><div class="pashead"><span class="hav">${ARTE.avatar(S.av)}</span><div class="pt"><h2>${esc(t('pas.title'))}</h2><p class="pname">${esc(name)}</p><p class="htit">${chipsTitulos()}</p>
+        <p class="muted small">${esc(t('pas.lead'))} <span class="printonly">${esc(t('pas.date', { f: new Date().toLocaleDateString(LOC(), { day: 'numeric', month: 'long', year: 'numeric' }) }))} · curionaut.org</span></p></div>
+      <button class="btn noprint" id="pasPrint">${esc(t('pas.print'))}</button></div></section>
+    <section class="card c-tit"><h2><span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.4l6-.8z"/></svg></span>${esc(t('tit.title'))}<span class="act cnt">${esc(t('pas.count', { a: gan.length, b: ECO.TITULOS.length }))}</span></h2>
+      <p class="muted small noprint" style="margin:0 0 12px">${esc(t('tit.lead'))}</p><div class="titles">${tits}</div></section>
+    <section class="card c-sab"><h2><span class="ico"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>${esc(t('pas.skills'))}<span class="act cnt">${esc(t('pas.count', { a: hechosN, b: ECO.SABERES.length }))}</span></h2>
+      ${hechosN ? '' : `<p class="empty printonly">${esc(t('pas.empty'))}</p>`}${areas}<p class="muted small" style="margin:14px 0 0">${esc(t('pas.curr'))}</p></section>`;
+  $('#pasPrint').onclick = () => window.print();
+  $$('#pasBox details.pend').forEach(d => d.ontoggle = () => { pasOpen[d.dataset.area] = d.open; });
+  $$('#pasBox [data-tit]').forEach(b => b.onclick = () => { const id = b.dataset.tit;
+    if (S.tit.includes(id)) S.tit = S.tit.filter(x => x !== id); else if (S.tit.length >= 3) { toast(t('tit.max')); return; } else S.tit.push(id);
+    save(); renderHero(); renderPasaporte(); const again = $(`#pasBox [data-tit="${id}"]`); if (again) again.focus(); });
+}
+
+/* ---------- Yo: avatar por piezas, fondos y nombre ---------- */
+let yoG = 'pelo';
+function tiene(slot, id) { const it = slot === 'fondo' ? ARTE.FONDOS.find(x => x.id === id) : (ARTE.PIEZAS[slot] || []).find(x => x.id === id); return !!it && (!it.p || S.led.some(x => x.k === ARTE.claveCompra(slot, id))); }
+const miniFondo = id => `<span class="fthumb"><span class="fx f-${esc(id)}" aria-hidden="true"><i></i><b></b></span></span>`;
+function elegir(slot, id) {
+  const fondo = slot === 'fondo', it = fondo ? ARTE.FONDOS.find(x => x.id === id) : (ARTE.PIEZAS[slot] || []).find(x => x.id === id); if (!it) return;
+  const poner = () => { if (fondo) S.fondo = id; else S.av = Object.assign(ARTE.limpia(S.av), { [slot]: id }); save(); aplicaFondo(); renderHero(); renderYo(); const b = $(`#yoBox [data-slot="${slot}"][data-id="${id}"]`); if (b) b.focus(); };
+  if (tiene(slot, id)) { poner(); return; }
+  const s = saldoAhora(), p = it.p, fe = Math.max(0, (p.e || 0) - s.e), fc = Math.max(0, (p.c || 0) - s.c), nm = nombrePieza(slot, id);
+  const prev = fondo ? `<div class="pv">${miniFondo(id)}</div>` : `<div class="pv"><span class="yobig">${ARTE.muestra(S.av, slot, id)}</span></div>`;
+  if (fe || fc) { modal(`<h3>${esc(nm)}</h3>${prev}<p>${esc(t('shop.cost'))} ${coste(p)}</p><p class="hint">${esc(fe ? t('shop.poorE', { n: fe }) : t('shop.poorC', { n: fc }))}</p><div class="row"><button class="btn pri" id="cfOk">${esc(t('btn.ok'))}</button></div>`, c => { $('#cfOk').onclick = c; }); return; }
+  confirma(`<h3>${esc(t('shop.buyQ', { x: nm }))}</h3>${prev}<p>${esc(t('shop.cost'))} ${coste(p)} · ${esc(t('shop.after'))} ${cur(s.e - (p.e || 0), 'e')} ${cur(s.c - (p.c || 0), 'c')}</p>`, t('shop.buy'), () => {
+    if (tiene(slot, id)) return; const z = saldoAhora(); if (z.e < (p.e || 0) || z.c < (p.c || 0)) return;
+    mover({ k: ARTE.claveCompra(slot, id), e: -(p.e || 0), c: -(p.c || 0) }); poner(); toast(t('shop.bought')); });
+}
+function renderYo() {
+  const box = $('#yoBox'); if (!box) return; const cfg = ARTE.limpia(S.av), grp = ARTE.GRUPOS.find(g => g.id === yoG) || ARTE.GRUPOS[0], nube = !!(ME && ME.display_name);
+  const estado = (own, on, it, usando) => `<span class="pr">${on ? esc(t(usando)) : own ? (it.p ? esc(t('shop.have')) : '') : coste(it.p)}</span>`;
+  const opts = ARTE.PIEZAS[grp.id].map((o, i) => { const own = tiene(grp.id, o.id), on = cfg[grp.id] === o.id;
+    return `<button class="opt ${own ? '' : 'lock'}" data-slot="${esc(grp.id)}" data-id="${esc(o.id)}" aria-pressed="${on}">${ARTE.muestra(cfg, grp.id, o.id)}<span class="${o.n ? '' : 'sr'}">${esc(o.n ? tt(o.n) : `${tt(grp.n)} ${i + 1}`)}</span>${estado(own, on, o, 'shop.using')}</button>`; }).join('');
+  const fondos = ARTE.FONDOS.map(f => { const own = tiene('fondo', f.id), on = S.fondo === f.id;
+    return `<button class="opt ${own ? '' : 'lock'}" data-slot="fondo" data-id="${esc(f.id)}" aria-pressed="${on}">${miniFondo(f.id)}<span>${esc(tt(f.n))}</span>${estado(own, on, f, 'shop.active')}</button>`; }).join('');
+  box.innerHTML = `<section class="card c-yo"><h2><span class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></span>${esc(t('yo.title'))}</h2>
+      <div class="yotop"><span class="yobig">${ARTE.avatar(cfg)}</span><div class="yoinfo">
+        <div class="field"><label for="yoName">${esc(t('yo.name'))}</label><input id="yoName" maxlength="20" autocomplete="off" value="${esc(nube ? ME.display_name : childName())}" ${nube ? 'readonly' : ''}></div>
+        <p class="lab" id="yoGL">${esc(t('yo.gen'))}</p><div class="seg" role="group" aria-labelledby="yoGL">${['m', 'f', 'n'].map(g => `<button type="button" data-gen="${g}" aria-pressed="${S.gen === g}">${esc(t('yo.gen.' + g))}</button>`).join('')}</div></div></div>
+      <p class="muted small" style="margin:14px 0 0">${esc(t('yo.lead'))}</p>
+      <div class="gtabs" role="group" aria-label="${esc(t('yo.title'))}">${ARTE.GRUPOS.map(g => `<button type="button" data-grp="${esc(g.id)}" aria-pressed="${g.id === grp.id}">${esc(tt(g.n))}</button>`).join('')}</div>
+      <div class="opts" id="yoOpts">${opts}</div></section>
+    <section class="card c-fondos"><h2><span class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 15l5-4 4 3 3-2 6 4"/></svg></span>${esc(t('yo.bg'))}</h2><div class="opts fopts">${fondos}</div></section>`;
+  $$('#yoBox [data-slot]').forEach(b => b.onclick = () => elegir(b.dataset.slot, b.dataset.id));
+  $$('#yoBox [data-grp]').forEach(b => b.onclick = () => { yoG = b.dataset.grp; renderYo(); const x = $(`#yoBox [data-grp="${yoG}"]`); if (x) x.focus(); });
+  $$('#yoBox [data-gen]').forEach(b => b.onclick = () => { S.gen = b.dataset.gen; save(); renderHero(); renderYo(); const x = $(`#yoBox [data-gen="${S.gen}"]`); if (x) x.focus(); });
+  if (!nube) $('#yoName').onchange = e => { S.childName = e.target.value.trim().slice(0, 20); save(); tick(); };
+}
+
 /* =================== MUDANZA desde la dirección antigua =================== */
 /* La Estación antigua (agomezbl.github.io) manda todas las partidas en el enlace:
    #mudanza=g.<base64url de JSON comprimido con gzip>  (o j.<base64url de JSON> si el navegador no comprime) */
@@ -851,9 +1193,12 @@ async function checkMove() {
 
 /* =================== ARRANQUE Y SESIÓN =================== */
 const FAM = {};          // nombres de la familia (para el padre)
-function showMain() { loadRut(); $('#login').hidden = true; $('#main').hidden = false; $('#nav').hidden = false; tick(); detect(); renderAll(); checkMove(); }
+function showMain() {
+  loadRut(); $('#login').hidden = true; $('#main').hidden = false; $('#nav').hidden = false; $('#navTop').hidden = false; aplicaFondo();
+  tick(); detect(); const h = location.hash.slice(1); VIEW = VIEWS.includes(h) ? h : 'inicio'; renderAll(); go(VIEW, true); checkMove();
+}
 function renderAll() {
-  renderMentor(); renderHoy(); renderLinks(); renderRut(); renderNotes(); renderGames();
+  ganar(true); renderHero(); renderWallet(); renderMentor(); renderNuevo(); renderHoy(); renderLinks(); renderRut(); renderNotes(); renderGames(); renderView();
   $('#foot').textContent = cloudOn() ? `${t('foot.cloud')}${S.cache.rut && S.cache.rut.at ? ' · ' + t('foot.upd', { h: new Date(S.cache.rut.at).toLocaleTimeString(LOC(), { hour: '2-digit', minute: '2-digit' }) }) : ''}` : t('foot.local');
 }
 async function refresh() {
@@ -875,7 +1220,7 @@ async function start() {
   let session = null; try { session = (await sb.auth.getSession()).data.session; } catch (e) {}
   if (session) { try { ME = await loadMe(); } catch (e) { ME = S.cache.me || null; } if (ME) { S.cache.me = ME; S.mode = 'cloud'; save(); showMain(); refresh(); return; } }
   if (S.mode === 'local') { showMain(); syncDot('', t('sync.local')); return; }
-  $('#login').hidden = false; $('#main').hidden = true; $('#nav').hidden = true;
+  $('#login').hidden = false; $('#main').hidden = true; $('#nav').hidden = true; $('#navTop').hidden = true;
   if (/^#mudanza=/.test(location.hash)) { $('#lgMsg').className = 'msg ok'; $('#lgMsg').textContent = t('mv.lead'); }
 }
 $('#lgGo').onclick = async () => {
@@ -890,7 +1235,6 @@ $('#lgPass').onkeydown = e => { if (e.key === 'Enter') $('#lgGo').click(); };
 $('#lgLocal').onclick = () => { S.mode = 'local'; save(); showMain(); syncDot('', t('sync.local')); };
 $('#lgLang').onclick = () => setLang(L === 'fr' ? 'es' : 'fr');
 $('#openBook').onclick = openBook;
-$('#bpts').onclick = openBook; $('#bpts').style.cursor = 'pointer';
 
 /* ajustes */
 $('#btnSet').onclick = () => {
@@ -918,16 +1262,12 @@ function install() {
   modal(`<h3>${esc(t('inst.title'))}</h3><p>${t('inst.ios')}</p><p>${t('inst.and')}</p><div class="row"><button class="btn pri" id="ok">${esc(t('btn.ok'))}</button></div>`, close => ($('#ok').onclick = close));
 }
 
-/* navegación inferior: resalta la sección visible */
-const io = ('IntersectionObserver' in window) ? new IntersectionObserver(es => { es.forEach(e => { if (e.isIntersecting) { const id = e.target.id === 'rut' || e.target.id === 'cole' ? 'hoy' : e.target.id; $$('#nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + id)); } }); }, { rootMargin: '-45% 0px -50% 0px' }) : null;
-if (io) ['mentor', 'hoy', 'cole', 'rut', 'notas', 'juegos'].forEach(id => io.observe(document.getElementById(id)));
-
 /* refrescos: al volver a la pestaña, al recuperar la conexión y cada 5 minutos */
 setInterval(tick, 15000); setInterval(() => { if (!document.hidden) renderHoy(); }, 60000); setInterval(() => { if (!document.hidden) refresh(); }, 300000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { if (detect()) renderMentor(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { if (detect()) renderMentor(); ganar(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
 addEventListener('online', () => refresh()); addEventListener('offline', () => syncDot('off', t('sync.offline')));
-addEventListener('storage', e => { if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); renderGames(); } });
+addEventListener('storage', e => { if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); ganar(); renderGames(); } });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 start();
-window.__EST = { get S() { return S; }, GAMES, renderAll, detect, ymd, setLang, get ME() { return ME; } };
+window.__EST = { get S() { return S; }, GAMES, ECO, ARTE, renderAll, detect, ganar, go, save, ymd, setLang, get VIEW() { return VIEW; }, get ME() { return ME; } };
 })();

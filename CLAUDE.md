@@ -5,7 +5,8 @@ la **Estación** (panel del niño con mentor y cuaderno) y los juegos, todo bajo
 lea el progreso de cada juego desde `localStorage`.
 
 ## Estructura
-- `site/` → se publica. `site/estacion/` (app.js lógica, mentores.js frases/preguntas ES/FR, estacion.css, sw.js, config.js).
+- `site/` → se publica. `site/estacion/` (app.js lógica y pantallas, economia.js reglas de los puntos, arte.js avatar y fondos,
+  mentores.js frases/preguntas ES/FR, estacion.css, sw.js, config.js).
 - `site/index.html`, `site/fr/`, `site/legal/`, `site/estilo.css`, `site/404.html` **se generan** con `python3 tools/paginas.py`: no editar a mano.
 - `site/comun/volver.js` → pestaña «Volver a la Estación» que `montar.sh` inyecta en cada juego.
 - `tools/montar.sh` → copia `site/` a `dist/` y descarga los juegos de sus repos (`LOCAL=/home/claude` usa clones locales).
@@ -28,11 +29,25 @@ Cada push a `main` despliega solo en 2–3 min. Comprobar con WebFetch añadiend
 | El Refugio 0.2 (`/refugio/`) | este repo, `site/refugio/` | `curionauta-refugio-0.1` (ficha: `docs/REFUGIO.md`; ES/FR; ya sale en la Estación) |
 | Estación | — | `estacion-nil-v1` (se mantiene para la mudanza desde `agomezbl/estacion-nil`) |
 
-Un juego nuevo necesita: entrada en `tools/montar.sh`, lector en `GAMES` de `app.js` y temas en `mentores.js`.
+Un juego nuevo necesita: entrada en `tools/montar.sh`, lector en `GAMES` de `app.js`, temas en `mentores.js`
+y sus logros, saberes y títulos en `economia.js`.
+
+## Estación v3 (nov 2026): cinco pantallas y monedero
+- Pantallas: **Inicio** (mentor, novedades, horario, colegio, Rutinator, notas), **Juegos** (oferta del día), **Monedero**
+  (⚡ Energía, 💎 Cristales, mercado, hucha, movimientos), **Pasaporte** (títulos y saberes; se imprime) y **Yo** (avatar por piezas, 10 fondos).
+- Los juegos no saben nada de puntos: la Estación lee su partida y apunta cada logro **una sola vez** en el libro `S.led`
+  (dentro de `estacion-nil-v1`). Cada apunte tiene clave única (`ohm:m:c1:1-1`, `pit:cam:c3`, `hucha:<id>:in`, `buy:casco:gorra`…);
+  el saldo es la suma del libro. La primera vez paga de golpe lo conseguido hasta ese día.
+- Para cambiar cuánto vale algo: tabla `V` y compañía al principio de `economia.js`. Precios de piezas y fondos: `arte.js`.
+  El padre escala los logros nuevos de ×0,5 a ×2 en Zona de padres → Ajustes.
+- Los fondos son CSS puro (`.fx.f-<id>` en `estacion.css`); el avatar es SVG generado en `arte.js`. Sin imágenes externas.
+- **El monedero vive en cada aparato** (móvil y tableta llevan cuentas separadas) hasta hacer la base Supabase multifamilia.
+- Aún no hecho: privilegios reales con aprobación del padre; gastar puntos en El Refugio y en UMBRAL.
 
 ## Pruebas (deben pasar antes de subir)
 ```
-LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 88 comprobaciones, navegador real
+LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 224 comprobaciones, navegador real
+node tools/test-economia.js                                        # las cuentas: logros, mercado, hucha, títulos, pasaporte (42)
 node tools/test-mudanza.js ../estacion-nil                         # aviso de la Estación antigua → la nueva
 node tools/test-refugio.js                                         # El Refugio: los tres retos tocando la escena, y el francés (47)
 AXE=/ruta/axe.min.js node tools/test-accesibilidad.js              # WCAG 2.1 AA

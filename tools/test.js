@@ -106,7 +106,8 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     check(/Chrono-Ohm \+170 XP/.test(inf) && /2 misiones nuevas/.test(inf) && /Para hablar en la cena/.test(inf), `estación ${vp.n}: informe semanal («${inf.slice(0, 120)}…»)`);
     if (vp.n === 'movil') await p.screenshot({ path: path.join(SH, 'est-informe.png'), fullPage: true });
     await p.click('#pClose'); await p.waitForTimeout(200);
-    check((await p.textContent('#bptsN')) === '25', `estación ${vp.n}: puntos de bitácora en la cabecera`);
+    const mon = await p.evaluate(() => ({ refl: __EST.S.led.filter(x => /^refl:/.test(x.k)).map(x => x.e).join(), e: __EST.ECO.saldo(__EST.S.led).e, cab: document.querySelector('#wE').textContent.replace(/\D/g, '') }));
+    check(mon.refl === '25' && String(mon.e) === mon.cab, `estación ${vp.n}: la reflexión validada da 25 de Energía y se ve en el monedero de la cabecera (${mon.cab})`);
     check(/\+25 puntos/.test(await p.textContent('#mentorBox')), `estación ${vp.n}: el mentor le cuenta la validación`);
     await p.screenshot({ path: path.join(SH, `est-${vp.n}-5-validada.png`) });
     await p.click('#openBook'); await p.waitForTimeout(200);
@@ -167,6 +168,111 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     check(/El Refugio/.test(mf) && /Le câble coupé et le multimètre|Macadie/.test(mf), `refugio: el mentor lo comenta en francés («${mf.slice(0, 110)}…»)`);
     await p.screenshot({ path: path.join(SH, 'est-refugio-fr.png'), fullPage: true });
     check(await desborde(p) <= 1, 'refugio: la Estación no desborda en móvil con la tarjeta nueva');
+    await ctx.close();
+  }
+  /* ---------- 2f. Estación v3: monedero, mercado, hucha, Pasaporte, avatar y fondos ---------- */
+  for (const vp of VPS) {
+    const { ctx, p } = await nuevaPagina(b, vp, { tag: `v3-${vp.n}` }); const T = `v3 ${vp.n}`;
+    await ctx.addInitScript(c => { if (!localStorage.getItem('chrono-ohm-v1')) localStorage.setItem('chrono-ohm-v1', JSON.stringify(c)); }, CHRONO0);
+    await p.goto(BASE + '/estacion/'); await p.waitForTimeout(600);
+    const est = () => p.evaluate(() => { const s = __EST.ECO.saldo(__EST.S.led); return { e: s.e, c: s.c, n: __EST.S.led.length, wE: document.querySelector('#wE').textContent.replace(/\D/g, ''), wC: document.querySelector('#wC').textContent, tit: __EST.S.tit.join(), hero: document.querySelector('#heroTit').textContent }; });
+    const ir = async v => { await p.click(`[data-go="${v}"] >> visible=true`); await p.waitForTimeout(250); };
+    const jugar = async c => { await p.evaluate(c => { localStorage.setItem('chrono-ohm-v1', JSON.stringify(c)); document.dispatchEvent(new Event('visibilitychange')); }, c); await p.waitForTimeout(350); };
+    // primera vez: paga de golpe lo conseguido hasta hoy (2 misiones con 3★ + 2 misiones (una con 3★) + 1 medalla = 125 ⚡; capítulo 1 = 2 💎)
+    let s = await est();
+    check(s.e === 125 && s.c === 2 && s.wE === '125' && s.wC === '2', `${T}: bienvenida, paga lo conseguido hasta hoy (${s.e} ⚡, ${s.c} 💎; cabecera ${s.wE}/${s.wC})`);
+    check(/Tu monedero ya funciona/.test(await p.textContent('#nuevoBox')), `${T}: Novedades explica de dónde sale el saldo`);
+    check(s.tit === 'ohm-chispa' && /Chispa de Ampère/.test(s.hero), `${T}: título ganado y luciendo junto al nombre (${s.hero})`);
+    check(await p.isVisible('#heroAv svg.avatar'), `${T}: avatar en la cabecera`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-1-inicio.png`), fullPage: true });
+    await p.reload(); await p.waitForTimeout(500); let s2 = await est();
+    check(s2.e === s.e && s2.n === s.n, `${T}: abrir la Estación otra vez no vuelve a pagar`);
+    // juega dos misiones nuevas con tres estrellas: 2 × (20 + 10) + 10 de práctica del día (+ 20 si era la oferta)
+    const oferta = await p.evaluate(() => __EST.S.oferta && __EST.S.oferta.g);
+    await jugar(CHRONO1); s2 = await est(); const esperado = 125 + 60 + 10 + (oferta === 'chrono-ohm' ? 20 : 0);
+    check(s2.e === esperado, `${T}: dos misiones nuevas → +60, +10 de práctica${oferta === 'chrono-ohm' ? ' y +20 de oferta' : ''} (${s2.e}, esperado ${esperado}; oferta del día: ${oferta})`);
+    check(await p.isVisible('#toast') && /\+\d+ ⚡/.test(await p.textContent('#toast')), `${T}: aviso de lo ganado («${(await p.textContent('#toast')).slice(0, 60)}»)`);
+    await jugar(CHRONO1); check((await est()).e === esperado, `${T}: volver sin jugar nada nuevo no da puntos`);
+    const REPE = JSON.parse(JSON.stringify(CHRONO1)); REPE.xp += 50; await jugar(REPE);
+    check((await est()).e === esperado, `${T}: repetir un nivel ya superado no da puntos`);
+    // juegos: oferta del día y lo ganado en cada juego
+    await ir('juegos');
+    check(await p.isVisible('#oferta') && /Energía extra|Oferta conseguida/.test(await p.textContent('#oferta')), `${T}: oferta del día en Juegos`);
+    check(/ganados aquí/.test(await p.textContent('#games .game')), `${T}: cada juego enseña la Energía ganada en él`);
+    check(await p.isVisible('#games') && !(await p.isVisible('#mentor')), `${T}: cada pantalla enseña solo lo suyo`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-2-juegos.png`), fullPage: true });
+    // mercado
+    await ir('monedero'); const precio = await p.evaluate(() => __EST.ECO.precio(__EST.ymd(new Date())));
+    await p.click('#mkBuy'); await p.click('#cfOk'); await p.waitForTimeout(200); s = await est();
+    check(s.e === esperado - precio && s.c === 3, `${T}: mercado, comprar un Cristal cuesta ${precio} (${s.e} ⚡, ${s.c} 💎)`);
+    await p.click('#mkSell'); await p.click('#cfOk'); await p.waitForTimeout(200); s = await est(); const venta = Math.floor(precio * 0.8);
+    check(s.e === esperado - precio + venta && s.c === 2, `${T}: mercado, venderlo devuelve el 80 % (${venta})`);
+    // hucha: guardar, romper (devuelve lo suyo) y recoger una ya cumplida (con premio)
+    const antes = s.e;
+    await p.fill('#huIn', '5'); await p.click('#huGo'); check(/entre 20 y/.test(await p.textContent('#huMsg')) && (await est()).e === antes, `${T}: hucha, no deja guardar menos del mínimo`);
+    await p.fill('#huIn', '100'); await p.click('[data-hd="14"]');
+    check(/tus 100 y 30 de premio/.test(await p.textContent('#huPrev')), `${T}: hucha, enseña el premio antes de guardar («${(await p.textContent('#huPrev')).slice(0, 70)}»)`);
+    await p.click('#huGo'); await p.waitForTimeout(200); s = await est();
+    check(s.e === antes - 100 && (await p.textContent('#balH')) === '100', `${T}: hucha, 100 guardados 14 días`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-3-monedero.png`), fullPage: true });
+    await p.click('[data-brk]'); await p.waitForTimeout(150); check(/pierdes el premio de 30/.test(await p.textContent('#sheet')), `${T}: hucha, avisa de lo que se pierde al romperla`);
+    await p.click('#cfOk'); await p.waitForTimeout(200);
+    check((await est()).e === antes && !(await p.$('[data-brk]')), `${T}: hucha rota, recupera lo suyo sin premio`);
+    await p.evaluate(() => { __EST.S.led.push({ k: 'hucha:vieja:in', e: -100, c: 0, g: '', at: Date.now() - 15 * 864e5, x: { d: 14 } }); __EST.save(); __EST.go('monedero'); }); await p.waitForTimeout(150);
+    await p.click('[data-col="vieja"]'); await p.waitForTimeout(200); s = await est();
+    check(s.e === antes + 30, `${T}: hucha cumplida, recoge lo suyo y el 30 % (${s.e - antes} de premio)`);
+    check((await p.evaluate(() => __EST.S.tit.join())).includes('hucha-oro'), `${T}: título «Paciencia de Oro» por esperar los 14 días`);
+    check((await p.$$('#v-monedero .c-mov .nlist li')).length >= 8, `${T}: lista de movimientos`);
+    // pasaporte
+    await ir('pasaporte'); const pas = (await p.textContent('#pasBox')).replace(/\s+/g, ' ');
+    check(/Sé qué es la corriente eléctrica/.test(pas) && /Demostrado en Chrono-Ohm · París 1820/.test(pas) && /1 de 27/.test(pas) && /Cycle 4 · Physique-chimie/.test(pas) && /2\.º ESO/.test(pas), `${T}: Pasaporte con el saber demostrado, dónde y su equivalencia escolar`);
+    check((await p.$$('#pasBox .tit.got')).length === 2 && (await p.$$('#pasBox .tit.lock')).length === 16, `${T}: títulos ganados y por ganar`);
+    check(!(await p.isVisible('#pasBox details.pend .sab')), `${T}: lo que falta por demostrar va plegado`);
+    await p.click('#pasBox details.pend summary'); await p.waitForTimeout(100); check(await p.isVisible('#pasBox details.pend .sab'), `${T}: y se despliega al tocarlo`);
+    await p.click('#pasBox [data-tit="ohm-chispa"]'); await p.waitForTimeout(150);
+    check(!/Chispa/.test(await p.textContent('#heroTit')), `${T}: puede dejar de lucir un título`);
+    await p.click('#pasBox [data-tit="ohm-chispa"]'); await p.waitForTimeout(150); check(/Chispa/.test(await p.textContent('#heroTit')), `${T}: y volver a lucirlo`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-4-pasaporte.png`), fullPage: true });
+    if (vp.n === 'pc') {
+      await p.emulateMedia({ media: 'print' }); await p.waitForTimeout(150);
+      check(await p.isVisible('#pasBox .pname') && !(await p.isVisible('header.top')) && !(await p.isVisible('#pasPrint')) && !(await p.isVisible('#pasBox .tit.lock')), 'v3: al imprimir sale solo el Pasaporte (sin menús ni botones)');
+      await p.screenshot({ path: path.join(SH, 'v3-pasaporte-impreso.png'), fullPage: true }); await p.emulateMedia({ media: 'screen' });
+    }
+    // yo: avatar por piezas, compra y fondos
+    await ir('yo');
+    await p.click('[data-grp="pelo"]'); await p.click('[data-slot="pelo"][data-id="rizado"]'); await p.waitForTimeout(150);
+    check(await p.evaluate(() => __EST.S.av.pelo === 'rizado' && __EST.S.led.every(x => !/^buy:pelo/.test(x.k))), `${T}: avatar, una pieza de serie se pone sin pagar`);
+    s = await est(); await p.click('[data-grp="casco"]'); await p.click('[data-slot="casco"][data-id="gorra"]'); await p.waitForTimeout(150);
+    check(/¿Comprar/.test(await p.textContent('#sheet')) && /Te quedarán/.test(await p.textContent('#sheet')), `${T}: tienda, pide confirmar y enseña lo que quedará`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-5-compra.png`) });
+    await p.click('#cfOk'); await p.waitForTimeout(200); s2 = await est();
+    check(s2.e === s.e - 40 && await p.evaluate(() => __EST.S.av.casco === 'gorra' && __EST.S.led.some(x => x.k === 'buy:casco:gorra')), `${T}: tienda, la gorra cuesta 40 y queda puesta`);
+    await p.click('[data-slot="casco"][data-id="no"]'); await p.click('[data-slot="casco"][data-id="gorra"]'); await p.waitForTimeout(150);
+    check((await est()).e === s2.e && !(await p.isVisible('#modal')), `${T}: tienda, lo comprado es suyo para siempre (no se paga dos veces)`);
+    await p.click('[data-slot="casco"][data-id="laurel"]'); await p.waitForTimeout(150);
+    check(/Te faltan 1 Cristales/.test(await p.textContent('#sheet')) && !(await p.$('#cfNo')), `${T}: tienda, si no llega se lo dice y no deja comprar`);
+    await p.click('#cfOk'); await p.waitForTimeout(100);
+    await p.click('[data-slot="fondo"][data-id="nebulosa"]'); await p.waitForTimeout(200);
+    check((await p.getAttribute('#fondo', 'class')) === 'fx f-nebulosa' && (await est()).e === s2.e, `${T}: fondo de serie cambiado (Nebulosa)`);
+    const anim = await p.evaluate(() => getComputedStyle(document.querySelector('#fondo i')).animationName);
+    check(anim && anim !== 'none', `${T}: el fondo está animado (${anim})`);
+    check((await p.$$('#yoBox .fopts .opt')).length === 10, `${T}: diez fondos para elegir`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-6-yo.png`), fullPage: true });
+    await p.reload(); await p.waitForTimeout(500);
+    check((await p.getAttribute('#fondo', 'class')) === 'fx f-nebulosa' && await p.evaluate(() => __EST.S.av.casco === 'gorra' && __EST.VIEW === 'yo') && (await est()).e === s2.e, `${T}: al volver a abrir conserva saldo, avatar, fondo y pantalla`);
+    // zona de padres: multiplicador ×2 para los logros nuevos
+    await p.click('#btnSet'); await p.click('#stPar'); await p.fill('#pgIn', 'abcd'); await p.click('#pgOk'); await p.waitForTimeout(250);
+    await p.click('[data-tab="set"]'); await p.click('[data-mult="2"]'); await p.waitForTimeout(100); await p.click('#pClose'); await p.waitForTimeout(150);
+    const C2 = JSON.parse(JSON.stringify(CHRONO1)); C2.xp += 90; C2.ch.c2.done = 5; C2.ch.c2.stars['2-5'] = 2; s = await est(); await jugar(C2); s2 = await est();
+    check(s2.e === s.e + 40, `${T}: con ×2 del padre, una misión nueva da 40 en vez de 20 (+${s2.e - s.e}; la práctica del día ya estaba cobrada)`);
+    // francés y desbordes
+    await p.evaluate(() => __EST.setLang('fr')); await p.waitForTimeout(200);
+    for (const v of ['inicio', 'juegos', 'monedero', 'pasaporte', 'yo']) { await ir(v); const d = await desborde(p); check(d <= 1, `${T}: «${v}» sin desborde en francés (${d})`); }
+    await ir('monedero'); const fr = (await p.textContent('#monBox')).replace(/\s+/g, ' ');
+    check(/Ma bourse/.test(fr) && /Marché/.test(fr) && /Tirelire/.test(fr) && /Cristaux/.test(fr) && !/Energía|Hucha|Mercado/.test(fr), `${T}: monedero en francés`);
+    await ir('pasaporte'); const frp = (await p.textContent('#pasBox')).replace(/\s+/g, ' ');
+    check(/Passeport des savoirs/.test(frp) && /Étincelle d’Ampère/.test(frp) && /Je sais ce qu’est le courant électrique/.test(frp), `${T}: Pasaporte en francés`);
+    await p.screenshot({ path: path.join(SH, `v3-${vp.n}-7-pasaporte-fr.png`), fullPage: true });
     await ctx.close();
   }
   /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */
