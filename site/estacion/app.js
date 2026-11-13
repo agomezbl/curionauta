@@ -35,7 +35,14 @@ if (![0.5, 0.75, 1, 1.5, 2].includes(S.mult)) S.mult = 1;
 if (!S.miasOk) { S.led.forEach(x => { if (/^refl:/.test(x.k)) S.mias[x.k.slice(5)] = 1; }); S.miasOk = 1; }
 if (!ARTE.FONDOS.some(f => f.id === S.fondo)) S.fondo = 'orbita';
 if (!['m', 'f', 'n'].includes(S.gen)) S.gen = 'n';
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+/* El libro de puntos (S.led) solo crece y cada apunte tiene clave única, así que al guardar se junta con lo que haya
+   guardado otra pestaña o ventana de la Estación: así una no borra las compras o la hucha de la otra.
+   (Si algún día se añade «borrar el monedero», habrá que borrarlo también aquí.) */
+function juntaLibro(otro) {
+  if (!Array.isArray(otro) || !S || !Array.isArray(S.led)) return 0; const have = new Set(S.led.map(x => x.k)); let n = 0;
+  otro.forEach(x => { if (x && typeof x.k === 'string' && !have.has(x.k)) { S.led.push(x); have.add(x.k); n++; } }); return n;
+}
+const save = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) juntaLibro(o.led); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
 /* ---------------- idioma ---------------- */
 if (S.lang !== 'es' && S.lang !== 'fr') { let n = ''; try { n = (navigator.languages && navigator.languages[0]) || navigator.language || ''; } catch (e) {} S.lang = /^fr/i.test(n) ? 'fr' : 'es'; }
@@ -184,6 +191,9 @@ const I = {
   'hu.amount': ['¿Cuánta Energía guardas?', 'Combien d’Énergie mets-tu de côté ?'], 'hu.term': ['¿Cuántos días?', 'Combien de jours ?'],
   'hu.days': ['{d} días', '{d} jours'], 'hu.preview': ['El {f} recogerás {n} de Energía: tus {a} y {i} de premio.', 'Le {f}, tu récupéreras {n} d’Énergie : tes {a} et {i} de bonus.'],
   'hu.save': ['Guardar en la hucha', 'Mettre dans la tirelire'], 'hu.min': ['Elige una cantidad entre {a} y {b}.', 'Choisis un montant entre {a} et {b}.'],
+  'hu.net': ['La hucha necesita conexión para comprobar la fecha. Conéctate para guardar o recoger.', 'La tirelire a besoin d’une connexion pour vérifier la date. Connecte-toi pour mettre de côté ou récupérer.'],
+  'hu.cupo': ['Tu hucha crece con lo que juegas: guarda como mucho lo que has ganado en los últimos 14 días ({n}), y ya tienes {g} guardados. Juega para poder guardar más.', 'Ta tirelire grandit quand tu joues : tu peux y mettre au plus ce que tu as gagné ces 14 derniers jours ({n}), et tu as déjà {g} de côté. Joue pour pouvoir en mettre plus.'],
+  'hu.cupoHelp': ['Tu hucha crece con lo que juegas: ahora caben {n} más (lo ganado en los últimos 14 días).', 'Ta tirelire grandit quand tu joues : il y a encore de la place pour {n} (ce que tu as gagné ces 14 derniers jours).'],
   'hu.poor': ['Necesitas al menos {n} de Energía para abrir una hucha.', 'Il te faut au moins {n} d’Énergie pour ouvrir une tirelire.'],
   'hu.full': ['Ya tienes {n} huchas abiertas. Cuando recojas una podrás abrir otra.', 'Tu as déjà {n} tirelires ouvertes. Quand tu en récupéreras une, tu pourras en ouvrir une autre.'],
   'hu.left': ['faltan {n} días', 'encore {n} jours'], 'hu.left1': ['falta 1 día', 'encore 1 jour'], 'hu.leftH': ['faltan unas horas', 'encore quelques heures'],
@@ -902,6 +912,17 @@ const num = n => (n < 0 ? '−' : '') + Math.abs(Math.round(n)).toLocaleString(L
 const cur = (n, k, sign) => `<span class="cur ${k}${n < 0 ? ' neg' : ''}">${k === 'e' ? SVG_E : SVG_C}<b>${sign && n > 0 ? '+' : ''}${num(n)}</b><span class="sr"> ${esc(t(k === 'e' ? 'w.energy' : 'w.crystals'))}</span></span>`;
 const coste = p => (p ? (p.e ? cur(p.e, 'e') : '') + (p.c ? cur(p.c, 'c') : '') : '');
 const hoy = () => ymd(new Date());
+/* Hora fiable para la hucha: la del servidor (cabecera Date) más el tiempo medido con performance.now(), que no cambia
+   aunque se toque el reloj del aparato. Sin conexión no hay hora fiable y la hucha no deja guardar ni recoger
+   (romperla sí: devuelve solo lo guardado). Así adelantar el reloj ya no sirve para cobrarla antes. */
+let RELOJ = null;
+async function sincronizaHora() {
+  try { const t0 = performance.now(), r = await fetch('config.js?hora=' + Date.now(), { method: 'HEAD', cache: 'no-store' }), t1 = performance.now();
+    const d = Date.parse(r.headers.get('Date') || ''); if (!r.ok || !isFinite(d)) return false;
+    const antes = !!RELOJ; RELOJ = { srv: d + 500 + (t1 - t0) / 2, perf: t1 };
+    if (!antes && VIEW === 'monedero' && !$('#main').hidden) renderMonedero(); return true; } catch (e) { return false; }
+}
+const horaFiable = () => (RELOJ ? RELOJ.srv + (performance.now() - RELOJ.perf) : null);
 const saldoAhora = () => ECO.saldo(S.led);
 const jname = g => (ECO.JUEGOS[g] ? tt(ECO.JUEGOS[g]) : 'Curionaut');
 const esPadre = () => !!(ME && ME.role === 'padre');
@@ -953,6 +974,7 @@ function apuntar() {
 }
 /* un movimiento hecho a mano: mercado, hucha o una compra */
 function mover(x) {
+  if (S.led.some(y => y.k === x.k)) return false;
   S.led.push(Object.assign({ e: 0, c: 0, g: '', at: Date.now() }, x));
   const nt = titulosNuevos(); save(); renderWallet(); renderHero(); renderNuevo();
   if (nt.length) setTimeout(() => toast(`${t('new.title')}: ${tituloTxt(nt[0])}`), 3000);
@@ -1033,16 +1055,17 @@ function renderOferta() {
 let huAmt = 0, huD = 7;
 function renderMonedero() {
   const box = $('#monBox'); if (!box) return;
-  const s = saldoAhora(), d = hoy(), p = ECO.precio(d), v = ECO.venta(d), ayer = ECO.precio(ymd(addDays(new Date(), -1))), now = Date.now();
-  const deps = ECO.depositos(S.led, now).filter(x => !x.cerrada), enH = deps.reduce((a, x) => a + x.e, 0);
-  const H = ECO.HUCHA, maxA = Math.min(H.max, s.e), puede = s.e >= H.min && deps.length < H.abiertas;
+  const s = saldoAhora(), d = hoy(), p = ECO.precio(d), v = ECO.venta(d), ayer = ECO.precio(ymd(addDays(new Date(), -1))), fiable = horaFiable(), now = fiable || Date.now();
+  if (!fiable || performance.now() - RELOJ.perf > 120000) sincronizaHora();
+  const deps = ECO.depositos(S.led, now).filter(x => !x.cerrada), enH = deps.reduce((a, x) => a + x.e, 0), cupo = ECO.cupoHucha(S.led, now);
+  const H = ECO.HUCHA, maxA = Math.min(cupo.libre, s.e), puede = !!fiable && s.e >= H.min && deps.length < H.abiertas && cupo.libre >= H.min;
   if (!huAmt) huAmt = 100; if (puede) huAmt = Math.max(H.min, Math.min(maxA, huAmt));
   const corta = ts => new Date(ts).toLocaleDateString(LOC(), { day: 'numeric', month: 'short' });
   const falta = x => { const h = (x.fin - now) / 36e5; return x.lista ? t('hu.ready') : h < 24 ? t('hu.leftH') : Math.ceil(h / 24) === 1 ? t('hu.left1') : t('hu.left', { n: Math.ceil(h / 24) }); };
-  const dep = x => { const pct = Math.max(0, Math.min(100, Math.round((now - x.at) / (x.fin - x.at) * 100)));
-    return `<div class="dep ${x.lista ? 'ready' : ''}"><div class="dh">${cur(x.e, 'e')}<span aria-hidden="true">→</span>${cur(x.e + x.premio, 'e')}<span class="when">${esc(corta(x.fin))} · ${esc(falta(x))}</span></div>
+  const dep = x => { const lista = x.lista && !!fiable, pct = Math.max(0, Math.min(100, Math.round((now - x.at) / (x.fin - x.at) * 100)));
+    return `<div class="dep ${lista ? 'ready' : ''}"><div class="dh">${cur(x.e, 'e')}<span aria-hidden="true">→</span>${cur(x.e + x.premio, 'e')}<span class="when">${esc(corta(x.fin))} · ${esc(falta(x))}</span></div>
       <div class="pb" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="${esc(t('hu.bar'))}"><i style="width:${pct}%"></i></div>
-      <div class="da">${x.lista ? `<button class="btn pri sm" data-col="${esc(x.id)}">${esc(t('hu.collect', { n: num(x.e + x.premio) }))}</button>` : `<button class="btn sm" data-brk="${esc(x.id)}">${esc(t('hu.break'))}</button>`}</div></div>`; };
+      <div class="da">${lista ? `<button class="btn pri sm" data-col="${esc(x.id)}">${esc(t('hu.collect', { n: num(x.e + x.premio) }))}</button>` : `<button class="btn sm" data-brk="${esc(x.id)}">${esc(t('hu.break'))}</button>`}</div></div>`; };
   const movs = S.led.map((x, i) => ({ x, i })).sort((a, b) => (b.x.at - a.x.at) || (b.i - a.i)).map(o => o.x);
   box.innerHTML = `<div class="mgrid">
     <section class="card c-saldo full"><h2><span class="ico">${SVG_E}</span>${esc(t('mon.bal'))}</h2>
@@ -1061,14 +1084,15 @@ function renderMonedero() {
       ${puede ? `<div class="hform"><label for="huIn">${esc(t('hu.amount'))}</label><input id="huIn" type="number" inputmode="numeric" min="${H.min}" max="${maxA}" step="10" value="${huAmt}">
         <span class="lab" id="huTL">${esc(t('hu.term'))}</span><div class="seg" role="group" aria-labelledby="huTL">${ECO.PLAZOS.map(z => `<button type="button" data-hd="${z.d}" aria-pressed="${huD === z.d}">${esc(t('hu.days', { d: z.d }))} · +${z.pct} %</button>`).join('')}</div>
         <p class="hprev" id="huPrev" aria-live="polite"></p><p class="msg" id="huMsg" aria-live="polite"></p><button class="btn pri" id="huGo">${esc(t('hu.save'))}</button></div>`
-      : `<p class="empty">${esc(deps.length >= H.abiertas ? t('hu.full', { n: H.abiertas }) : t('hu.poor', { n: H.min }))}</p>`}</section>
+      : `<p class="empty">${esc(!fiable ? t('hu.net') : deps.length >= H.abiertas ? t('hu.full', { n: H.abiertas }) : s.e < H.min ? t('hu.poor', { n: H.min }) : t('hu.cupo', { n: num(cupo.ganado), g: num(cupo.guardado) }))}</p>`}
+      ${puede ? `<p class="muted small" style="margin:10px 0 0">${esc(t('hu.cupoHelp', { n: num(cupo.libre) }))}</p>` : ''}</section>
     <section class="card c-mov full"><h2><span class="ico"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>${esc(t('mv2.title'))}${movs.length > 12 ? `<button class="btn sm act" id="movAll">${esc(t('mv2.all'))}</button>` : ''}</h2>
       ${movs.length ? `<ul class="nlist">${movs.slice(0, 12).map(movItem).join('')}</ul>` : `<p class="empty">${esc(t('mv2.none'))}</p>`}</section></div>`;
   const cambio = () => 'cambio:' + Date.now().toString(36);
   $('#mkBuy').onclick = () => confirma(`<h3>${esc(t('mk.buyQ', { p }))}</h3>`, t('mk.do'), () => { if (saldoAhora().e < p) return; mover({ k: cambio(), e: -p, c: 1 }); toast(t('mk.done')); renderMonedero(); });
   $('#mkSell').onclick = () => confirma(`<h3>${esc(t('mk.sellQ', { p: v }))}</h3><p class="muted">${esc(t('mk.sellW', { q: p }))}</p>`, t('mk.do'), () => { if (saldoAhora().c < 1) return; mover({ k: cambio(), e: v, c: -1 }); toast(t('mk.done')); renderMonedero(); });
   const all = $('#movAll'); if (all) all.onclick = () => modal(`<h3>${esc(t('mv2.title'))}</h3><ul class="nlist" style="margin-top:10px">${movs.slice(0, 200).map(movItem).join('')}</ul><div class="row"><button class="btn pri" id="mvX">${esc(t('btn.close'))}</button></div>`, c => { $('#mvX').onclick = c; }, true);
-  $$('#monBox [data-col]').forEach(b => b.onclick = () => { const x = deps.find(y => y.id === b.dataset.col); if (!x || Date.now() < x.fin) return; mover({ k: `hucha:${x.id}:out`, e: x.e + x.premio, x: { d: x.d, premio: x.premio } }); toast(t('hu.got', { n: num(x.e + x.premio) })); renderMonedero(); });
+  $$('#monBox [data-col]').forEach(b => b.onclick = () => { const x = deps.find(y => y.id === b.dataset.col); const h = horaFiable(); if (!x || !h || h < x.fin) { renderMonedero(); return; } mover({ k: `hucha:${x.id}:out`, e: x.e + x.premio, x: { d: x.d, premio: x.premio } }); toast(t('hu.got', { n: num(x.e + x.premio) })); renderMonedero(); });
   $$('#monBox [data-brk]').forEach(b => b.onclick = () => { const x = deps.find(y => y.id === b.dataset.brk); if (!x) return;
     confirma(`<h3>${esc(t('hu.breakQ'))}</h3><p>${esc(t('hu.breakW', { a: num(x.e), i: num(x.premio), x: falta(x) }))}</p>`, t('hu.break'), () => { mover({ k: `hucha:${x.id}:out`, e: x.e, x: { d: x.d, premio: 0 } }); toast(t('hu.broken', { a: num(x.e) })); renderMonedero(); }); });
   if (puede) {
@@ -1078,7 +1102,7 @@ function renderMonedero() {
     inp.oninput = () => { huAmt = val() || huAmt; prev(); };
     $$('#monBox [data-hd]').forEach(b => b.onclick = () => { huD = Number(b.dataset.hd); $$('#monBox [data-hd]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); prev(); });
     $('#huGo').onclick = () => { const a = val(); if (!(a >= H.min && a <= maxA)) { $('#huMsg').textContent = t('hu.min', { a: H.min, b: maxA }); inp.focus(); return; }
-      mover({ k: `hucha:${Date.now().toString(36)}:in`, e: -a, x: { d: huD } }); toast(t('hu.saved')); renderMonedero(); };
+      const h = horaFiable(); if (!h) { renderMonedero(); return; } mover({ k: `hucha:${Date.now().toString(36)}:in`, e: -a, at: Math.round(h), x: { d: huD } }); toast(t('hu.saved')); renderMonedero(); };
     prev();
   }
 }
@@ -1218,6 +1242,7 @@ async function loadMe() {
   return data;
 }
 async function start() {
+  sincronizaHora(); try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
   applyStatic(); remoteProg = (S.cache && S.cache.prog) || {};
   if (!CLOUD) { S.mode = 'local'; save(); showMain(); syncDot('', t('sync.local')); return; }
   let session = null; try { session = (await sb.auth.getSession()).data.session; } catch (e) {}
@@ -1267,10 +1292,11 @@ function install() {
 
 /* refrescos: al volver a la pestaña, al recuperar la conexión y cada 5 minutos */
 setInterval(tick, 15000); setInterval(() => { if (!document.hidden) renderHoy(); }, 60000); setInterval(() => { if (!document.hidden) refresh(); }, 300000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { if (detect()) renderMentor(); ganar(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
-addEventListener('online', () => refresh()); addEventListener('offline', () => syncDot('off', t('sync.offline')));
-addEventListener('storage', e => { if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); ganar(); renderGames(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { sincronizaHora(); if (detect()) renderMentor(); ganar(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
+addEventListener('online', () => { sincronizaHora(); refresh(); }); addEventListener('offline', () => syncDot('off', t('sync.offline')));
+addEventListener('storage', e => { if (e.key === KEY && !$('#main').hidden) { try { const o = JSON.parse(e.newValue || 'null'); if (o && juntaLibro(o.led)) { renderWallet(); renderHero(); renderNuevo(); renderView(); } } catch (x) {} return; }
+  if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); ganar(); renderGames(); } });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 start();
-window.__EST = { get S() { return S; }, GAMES, ECO, ARTE, renderAll, detect, ganar, go, save, ymd, setLang, get VIEW() { return VIEW; }, get ME() { return ME; } };
+window.__EST = { get S() { return S; }, horaFiable, sincronizaHora, GAMES, ECO, ARTE, renderAll, detect, ganar, go, save, ymd, setLang, get VIEW() { return VIEW; }, get ME() { return ME; } };
 })();

@@ -53,6 +53,16 @@ check(ECO.depositos(led, t0 + 7 * 864e5).find(x => x.id === 'a').lista, 'hucha: 
 check(b && b.cerrada && b.out.x.premio === 0, 'hucha: la que se rompió antes queda cerrada y sin premio');
 check(ECO.saldo(led).e === -100, 'hucha: romperla devuelve justo lo guardado');
 
+const ah = new Date(2026, 10, 20).getTime(), dd = 864e5;
+let cu = ECO.cupoHucha([{ k: 'ohm:m:c1:1-1', e: 200, at: ah - 3 * dd }, { k: 'regalo', e: 1000, at: ah - 20 * dd }, { k: 'cambio:1', e: 88, c: -1, at: ah }, { k: 'hucha:z:out', e: 300, at: ah }], ah);
+check(cu.ganado === 200 && cu.libre === 200, `hucha: solo cuenta lo ganado jugando en los últimos 14 días, sin mercado ni hucha (${cu.ganado} ganado, ${cu.libre} libre)`);
+cu = ECO.cupoHucha([{ k: 'ohm:m:c1:1-1', e: 400, at: ah - dd }, { k: 'hucha:a:in', e: -150, at: ah - dd, x: { d: 7 } }], ah);
+check(cu.libre === 250, `hucha: lo ya guardado descuenta del cupo (${cu.libre})`);
+cu = ECO.cupoHucha([{ k: 'ohm:m:c1:1-1', e: 3000, at: ah - dd, w: 1 }], ah);
+check(cu.libre === ECO.HUCHA.max, 'hucha: nunca más de 500 guardados a la vez');
+const anual = ECO.interes(ECO.HUCHA.max, 14) * 365 / 14;
+check(true, `hucha: el premio pasa de depender solo de esperar a ser como mucho un 30 % de lo jugado (antes, hasta ${Math.round(3 * anual)} ⚡ al año sin jugar)`);
+
 /* ---- 5. títulos ---- */
 const tit = ks => ECO.titulosGanados(ks.map(k => (typeof k === 'string' ? { k } : k)));
 check(tit([]).length === 0, 'títulos: sin logros, ninguno');

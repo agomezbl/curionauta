@@ -124,7 +124,18 @@ const venta = dia => Math.floor(precio(dia) * 0.8);                  // vender u
 
 /* ---------------- hucha: bloquear ⚡ unos días a cambio de interés ---------------- */
 const PLAZOS = [{ d: 3, pct: 5 }, { d: 7, pct: 12 }, { d: 14, pct: 30 }];
-const HUCHA = { min: 20, max: 500, abiertas: 3 };
+const HUCHA = { min: 20, max: 500, abiertas: 3, ventana: 14 };
+/* La hucha crece con lo que juegas: lo guardado a la vez no puede pasar de lo ganado jugando en los últimos
+   14 días (ni de 500). Sin esto, guardar daba más que jugar: al máximo, unos 11.700 ⚡ al año sin tocar un
+   juego, cuando terminarlos todos da unos 3.700. Ahora el premio de la hucha es, como mucho, un 30 % extra
+   sobre lo que has jugado. */
+const NO_JUGADO = /^(hucha|cambio|buy):/;
+function cupoHucha(led, ahora) {
+  const desde = ahora - HUCHA.ventana * 864e5;
+  const ganado = (led || []).filter(x => x && x.e > 0 && (x.at || 0) >= desde && !NO_JUGADO.test(x.k || '')).reduce((a, x) => a + x.e, 0);
+  const guardado = depositos(led, ahora).filter(d => !d.cerrada).reduce((a, d) => a + d.e, 0);
+  return { ganado, guardado, libre: Math.max(0, Math.min(HUCHA.max, ganado) - guardado) };
+}
 const interes = (e, d) => { const p = PLAZOS.find(x => x.d === d); return p ? Math.round(e * p.pct / 100) : 0; };
 /* depósitos abiertos y cerrados a partir del libro: «hucha:<id>:in» abre y «hucha:<id>:out» cierra */
 function depositos(led, ahora) {
@@ -208,7 +219,7 @@ function ofertaDelDia(ultima, orden, dia) {
   return empate[hash('oferta|' + dia) % empate.length];
 }
 
-const API = { V, JUEGOS, hechos, logros, logrosReflexion, saldo, escala, precio, venta, PLAZOS, HUCHA, interes, depositos, TITULOS, nombreTitulo, titulosGanados, indice, AREAS, SABERES, ofertaDelDia, hash, PIT_IDS, REF_IDS };
+const API = { V, JUEGOS, hechos, logros, logrosReflexion, saldo, escala, precio, venta, PLAZOS, HUCHA, interes, depositos, cupoHucha, TITULOS, nombreTitulo, titulosGanados, indice, AREAS, SABERES, ofertaDelDia, hash, PIT_IDS, REF_IDS };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
 root.CURIO_ECO = API;
 })(typeof window !== 'undefined' ? window : globalThis);

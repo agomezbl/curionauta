@@ -224,6 +224,22 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await p.click('[data-col="vieja"]'); await p.waitForTimeout(200); s = await est();
     check(s.e === antes + 30, `${T}: hucha cumplida, recoge lo suyo y el 30 % (${s.e - antes} de premio)`);
     check((await p.evaluate(() => __EST.S.tit.join())).includes('hucha-oro'), `${T}: título «Paciencia de Oro» por esperar los 14 días`);
+    // trampas: adelantar el reloj del aparato no adelanta la hucha; la hora buena es la del servidor
+    await p.fill('#huIn', '50'); await p.click('[data-hd="14"]'); await p.click('#huGo'); await p.waitForTimeout(150);
+    const reloj = await p.evaluate(() => new Promise(r => { const e0 = __EST.ECO.saldo(__EST.S.led).e, real = Date.now; Date.now = () => real() + 20 * 864e5; __EST.go('monedero');
+      setTimeout(() => { const btn = document.querySelector('[data-col]'); if (btn) btn.click(); const e1 = __EST.ECO.saldo(__EST.S.led).e; Date.now = real; __EST.go('monedero'); r({ e0, e1, btn: !!btn }); }, 200); }));
+    check(!reloj.btn && reloj.e1 === reloj.e0, `${T}: adelantar el reloj del aparato 20 días no deja recoger la hucha antes de tiempo`);
+    const fiable = await p.evaluate(() => Math.abs(__EST.horaFiable() - Date.now()) < 5000);
+    check(fiable, `${T}: la hora fiable sale del servidor y coincide con la real`);
+    await p.click('[data-brk]'); await p.click('#cfOk'); await p.waitForTimeout(150);
+    // dos pestañas abiertas a la vez: una no borra lo que apunta la otra
+    const p2 = await ctx.newPage(); await p2.goto(BASE + '/estacion/'); await p2.waitForTimeout(500);
+    await p.evaluate(() => { __EST.S.led.push({ k: 'prueba:pestanaA', e: 1, c: 0, g: '', at: Date.now() }); __EST.save(); });
+    await p2.evaluate(() => { __EST.S.led.push({ k: 'prueba:pestanaB', e: 1, c: 0, g: '', at: Date.now() }); __EST.save(); });
+    await p.waitForTimeout(200);
+    const dos = await p.evaluate(() => { const o = JSON.parse(localStorage.getItem('estacion-nil-v1')); return { guardado: o.led.filter(x => /^prueba:/.test(x.k)).length, memoria: __EST.S.led.filter(x => /^prueba:/.test(x.k)).length }; });
+    check(dos.guardado === 2 && dos.memoria === 2, `${T}: con dos pestañas abiertas se guardan los apuntes de las dos (${dos.guardado} guardados, ${dos.memoria} en la otra pestaña)`);
+    await p2.close(); await p.evaluate(() => { __EST.S.led = __EST.S.led.filter(x => !/^prueba:/.test(x.k)); localStorage.setItem('estacion-nil-v1', JSON.stringify(__EST.S)); });
     check((await p.$$('#v-monedero .c-mov .nlist li')).length >= 8, `${T}: lista de movimientos`);
     // pasaporte
     await ir('pasaporte'); const pas = (await p.textContent('#pasBox')).replace(/\s+/g, ' ');
@@ -275,6 +291,19 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     await ir('pasaporte'); const frp = (await p.textContent('#pasBox')).replace(/\s+/g, ' ');
     check(/Passeport des savoirs/.test(frp) && /Étincelle d’Ampère/.test(frp) && /Je sais ce qu’est le courant électrique/.test(frp), `${T}: Pasaporte en francés`);
     await p.screenshot({ path: path.join(SH, `v3-${vp.n}-7-pasaporte-fr.png`), fullPage: true });
+    await ctx.close();
+  }
+  { /* hucha sin hora fiable (sin conexión): no deja guardar ni recoger; y el límite «lo ganado en 14 días» */
+    const { ctx, p } = await nuevaPagina(b, VPS[0], { tag: 'v3-sinred' });
+    await ctx.route('**/config.js?hora=*', r => r.abort());
+    await p.goto(BASE + '/estacion/'); await p.waitForTimeout(500);
+    await p.evaluate(() => { __EST.S.led.push({ k: 'regalo:viejo', e: 900, c: 0, g: '', at: Date.now() - 30 * 864e5 }, { k: 'hucha:lista:in', e: -50, c: 0, g: '', at: Date.now() - 4 * 864e5, x: { d: 3 } }); __EST.save(); __EST.go('monedero'); });
+    await p.waitForTimeout(250);
+    check(/necesita conexión/.test(await p.textContent('#monBox')) && !(await p.$('#huGo')) && !(await p.$('[data-col]')) && !!(await p.$('[data-brk]')), 'v3: sin conexión la hucha no deja guardar ni recoger (romper sí)');
+    await ctx.unroute('**/config.js?hora=*'); await p.evaluate(() => __EST.sincronizaHora()); await p.waitForTimeout(300);
+    check(!!(await p.$('[data-col]')), 'v3: al volver la conexión ya se puede recoger');
+    check(/Juega para poder guardar más/.test(await p.textContent('#monBox')) && !(await p.$('#huGo')), 'v3: con Energía antigua pero sin jugar en 14 días, la hucha pide jugar antes de guardar');
+    for (let i = errs.length - 1; i >= 0; i--) if (/^v3-sinred consola: Failed to load resource/.test(errs[i])) errs.splice(i, 1);   // los provoca la prueba al cortar la hora
     await ctx.close();
   }
   /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */
