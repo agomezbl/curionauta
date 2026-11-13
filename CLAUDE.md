@@ -42,12 +42,16 @@ y sus logros, saberes y títulos en `economia.js`.
   El padre escala los logros nuevos de ×0,5 a ×2 en Zona de padres → Ajustes.
 - Los fondos son CSS puro (`.fx.f-<id>` en `estacion.css`); el avatar es SVG generado en `arte.js`. Sin imágenes externas.
 - **El monedero vive en cada aparato** (móvil y tableta llevan cuentas separadas) hasta hacer la base Supabase multifamilia.
+- Hucha: la hora la da el servidor (`sincronizaHora`: cabecera Date + `performance.now()`), así que tocar el reloj del aparato no sirve;
+  sin conexión no deja guardar ni recoger. Lo guardado a la vez ≤ lo ganado jugando en 14 días (`cupoHucha`, máx. 500).
+- Varias pestañas: `save()` junta el libro con lo guardado (`juntaLibro`). El libro solo crece: un «borrar monedero» futuro debe tenerlo en cuenta.
+- Reflexiones: se pagan solo en el aparato donde se escribieron (`S.mias`).
 - Aún no hecho: privilegios reales con aprobación del padre; gastar puntos en El Refugio y en UMBRAL.
 
 ## Pruebas (deben pasar antes de subir)
 ```
-LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 224 comprobaciones, navegador real
-node tools/test-economia.js                                        # las cuentas: logros, mercado, hucha, títulos, pasaporte (42)
+LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 239 comprobaciones, navegador real
+node tools/test-economia.js                                        # las cuentas: logros, mercado, hucha, títulos, pasaporte (46)
 node tools/test-mudanza.js ../estacion-nil                         # aviso de la Estación antigua → la nueva
 node tools/test-refugio.js                                         # El Refugio: los tres retos tocando la escena, y el francés (47)
 AXE=/ruta/axe.min.js node tools/test-accesibilidad.js              # WCAG 2.1 AA
