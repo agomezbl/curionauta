@@ -21,15 +21,28 @@ const FAKE = `(function(){const today=new Date();const ymd=d=>{const z=new Date(
   ledger_entries:[{amount:30,currency:'credito',member_id:'m1'},{amount:4,currency:'estrella',member_id:'m1'}],
   calendar_events:[{id:'e1',date:ymd(today),time:'17:30',type:'cita',title:'Dentista'}],
   schedule_blocks:[{day_of_week:di,start_min:Math.max(0,m-20),end_min:m+35,subject:'Mathématiques',room:'B12',type:'clase',parity:'todas'}],
-  settings:[{week_parity:'todas'}],estacion_items:[],estacion_progress:[],estacion_reflexiones:[]};
+  settings:[{week_parity:'todas'}],estacion_items:[],estacion_progress:[],estacion_reflexiones:[],estacion_libro:[]};
  const persist=()=>localStorage.setItem('fake-db',JSON.stringify(DB));window.__FAKEDB=DB;
  const who=()=>DB.family_members.find(x=>x.auth_user_id===(localStorage.getItem('fake-sess')||''));
+ /* monedero (0033): las mismas reglas que la base, con la hora REAL (no la del aparato) */
+ let SEQ=0;const SINTABLA={code:'PGRST205',message:"Could not find the table 'public.estacion_libro' in the schema cache"};
+ function libroUp(p){if(localStorage.getItem('fake-sin-libro'))return SINTABLA;DB.estacion_libro=DB.estacion_libro||[];const me=who(),real=performance.timeOrigin+performance.now(),L=DB.estacion_libro,nuevos=[];
+  for(const x of (Array.isArray(p)?p:[p])){if(L.some(r=>r.member_id===me.id&&r.k===x.k)||nuevos.some(r=>r.k===x.k))continue;const at=Date.parse(x.at);let m=null;
+   if(/^hucha:.*:in$/.test(x.k)){if(Math.abs(at-real)>36e5)m='hucha: hora'}
+   else if(/^hucha:.*:out$/.test(x.k)){const ink=x.k.replace(/:out$/,':in'),dep=L.find(r=>r.member_id===me.id&&r.k===ink)||nuevos.find(r=>r.k===ink);
+    if(!dep)m='hucha: no existe';else{const d=dep.x&&dep.x.d,pct={3:5,7:12,14:30}[d]||0;if(x.e< -dep.e||x.e> -dep.e+Math.round(-dep.e*pct/100))m='hucha: importe';else if(x.e> -dep.e&&real+3e5<Date.parse(dep.at)+d*864e5)m='hucha: aún no'}}
+   else if(/^cambio:/.test(x.k)){if(!((x.c===1&&x.e<=-90)||(x.c===-1&&x.e>=0&&x.e<=88)))m='mercado'}
+   else if(/^buy:/.test(x.k)){if(x.e>0||x.c>0)m='compra'}
+   else if(x.e<0||x.c<0)m='logro';
+   if(m)return {code:'P0001',message:m};
+   nuevos.push(Object.assign({member_id:me.id},x,{created_at:new Date(real+(++SEQ)).toISOString()}))}
+  L.push(...nuevos);persist();return null}
  function Q(t){let rows=(DB[t]||[]).slice(),single=false,op='select',err=null;const q={
-  select(){return q},eq(k,v){if(op==='delete'){DB[t]=DB[t].filter(r=>r[k]!==v);persist();return q}rows=rows.filter(r=>r[k]===v);return q},gte(k,v){rows=rows.filter(r=>r[k]>=v);return q},lte(k,v){rows=rows.filter(r=>r[k]<=v);return q},order(){return q},limit(){return q},maybeSingle(){single=true;return q},
-  upsert(p){(Array.isArray(p)?p:[p]).forEach(x=>{const r=Object.assign({member_id:who().id,created_at:new Date().toISOString()},x);const i=DB[t].findIndex(y=>y.id&&y.id===r.id||(!y.id&&y.game===r.game&&y.device===r.device));if(i>=0)DB[t][i]=Object.assign(DB[t][i],r);else DB[t].push(r)});persist();op='up';return q},
+  select(){return q},eq(k,v){if(op==='delete'){DB[t]=DB[t].filter(r=>r[k]!==v);persist();return q}rows=rows.filter(r=>r[k]===v);return q},gte(k,v){rows=rows.filter(r=>r[k]>=v);return q},gt(k,v){rows=rows.filter(r=>r[k]>v);return q},lte(k,v){rows=rows.filter(r=>r[k]<=v);return q},order(){return q},limit(){return q},maybeSingle(){single=true;return q},
+  upsert(p){if(t==='estacion_libro'){op='up';err=libroUp(p);return q}(Array.isArray(p)?p:[p]).forEach(x=>{const r=Object.assign({member_id:who().id,created_at:new Date().toISOString()},x);const i=DB[t].findIndex(y=>y.id&&y.id===r.id||(!y.id&&y.game===r.game&&y.device===r.device));if(i>=0)DB[t][i]=Object.assign(DB[t][i],r);else DB[t].push(r)});persist();op='up';return q},
   insert(p){const me=who();(Array.isArray(p)?p:[p]).forEach(x=>{if(t==='estacion_reflexiones'&&(x.estado&&x.estado!=='pendiente'||x.puntos)){err={message:'new row violates row-level security policy'};return}DB[t].push(Object.assign({member_id:me.id,created_at:new Date().toISOString(),estado:'pendiente',puntos:0,nota:null},x))});persist();op='ins';return q},
   delete(){op='delete';return q},
-  then(res){if(t==='estacion_reflexiones'&&op==='select'){const me=who();rows=rows.filter(r=>me.role==='padre'||r.member_id===me.id)}res(err?{data:null,error:err}:op==='select'?{data:single?(rows[0]||null):rows,error:null}:{data:null,error:null})}};return q}
+  then(res){if(t==='estacion_libro'&&op==='select'&&localStorage.getItem('fake-sin-libro'))err=SINTABLA;if(t==='estacion_reflexiones'&&op==='select'){const me=who();rows=rows.filter(r=>me.role==='padre'||r.member_id===me.id)}res(err?{data:null,error:err}:op==='select'?{data:single?(rows[0]||null):rows,error:null}:{data:null,error:null})}};return q}
  function rpc(n,a){const me=who();
   if(n==='verify_parent_pin')return Promise.resolve({data:me.role==='padre'||a.p_pin==='1234',error:null});
   if(n==='estacion_revisar'){if(!(me.role==='padre'||a.p_pin==='1234'))return Promise.resolve({data:{ok:false,error:'clave'},error:null});
@@ -305,6 +318,55 @@ const desborde = p => p.evaluate(() => document.documentElement.scrollWidth - do
     check(/Juega para poder guardar más/.test(await p.textContent('#monBox')) && !(await p.$('#huGo')), 'v3: con Energía antigua pero sin jugar en 14 días, la hucha pide jugar antes de guardar');
     for (let i = errs.length - 1; i >= 0; i--) if (/^v3-sinred consola: Failed to load resource/.test(errs[i])) errs.splice(i, 1);   // los provoca la prueba al cortar la hora
     await ctx.close();
+  }
+  /* ---------- 2g. monedero en la nube (0033): el mismo en el móvil y en la tableta ---------- */
+  {
+    const AHORA = Date.now(), D = 864e5;
+    const VIEJO = { led: [{ k: 'ohm:m:c1:1-1', e: 20, c: 0, g: 'chrono-ohm', at: AHORA - 3 * D }, { k: 'hucha:viejaA:in', e: -60, c: 0, g: '', at: AHORA - 5 * D, x: { d: 3 } },
+      { k: 'hucha:viejaA:out', e: 63, c: 0, g: '', at: AHORA - 2 * D, x: { d: 3, premio: 3 } }, { k: 'hucha:viejaB:in', e: -40, c: 0, g: '', at: AHORA - 2 * D, x: { d: 7 } }], ecoAt: AHORA - 3 * D, lang: 'es' };
+    const saldoLocal = p => p.evaluate(() => { const s = __EST.ECO.saldo(__EST.S.led); return s.e + '|' + s.c; });
+    const saldoNube = p => p.evaluate(() => { const L = window.__FAKEDB.estacion_libro || []; return L.reduce((a, x) => a + x.e, 0) + '|' + L.reduce((a, x) => a + x.c, 0); });
+    // aparato A (móvil), con historia de antes del monedero en la nube
+    const A = await nuevaPagina(b, VPS[0], { cloud: true, tag: 'libro-A' });
+    await A.ctx.addInitScript(([c, v]) => { if (!localStorage.getItem('chrono-ohm-v1')) { localStorage.setItem('chrono-ohm-v1', JSON.stringify(c)); localStorage.setItem('estacion-nil-v1', JSON.stringify(v)); } localStorage.setItem('fake-sess', 'u1'); }, [CHRONO0, VIEJO]);
+    await A.p.goto(BASE + '/estacion/'); await A.p.waitForTimeout(1200);
+    const a1 = await A.p.evaluate(() => ({ est: __EST.libroEstado, local: __EST.S.led.length, subidos: __EST.S.led.filter(x => x.up).length, nube: (window.__FAKEDB.estacion_libro || []).length, ks: __EST.S.led.map(x => x.k).join() }));
+    check(a1.est === 'nube' && a1.local === a1.nube && a1.subidos === a1.local, `nube: el monedero del móvil sube entero a la cuenta (${a1.nube} apuntes)`);
+    check((await saldoLocal(A.p)) === (await saldoNube(A.p)), `nube: el saldo del móvil y el de la cuenta coinciden (${await saldoLocal(A.p)})`);
+    check(/hucha:viejaA:legado/.test(a1.ks) && !/hucha:viejaA:(in|out)/.test(a1.ks), 'nube: una hucha vieja ya recogida sube como su premio');
+    check(!/hucha:viejaB/.test(a1.ks) && /tienes tus 40 de Energía de vuelta/.test(await A.p.textContent('#toast')), 'nube: una hucha vieja abierta se devuelve y se avisa');
+    await A.p.evaluate(() => __EST.go('monedero')); await A.p.waitForTimeout(150);
+    check(/mismo monedero en todos tus aparatos/.test(await A.p.textContent('#monBox')), 'nube: el monedero dice que está guardado en la cuenta');
+    // aparato B (tableta): la misma cuenta, sin partidas guardadas
+    const db = await A.p.evaluate(() => JSON.parse(JSON.stringify(window.__FAKEDB)));
+    const B = await nuevaPagina(b, VPS[1], { cloud: true, tag: 'libro-B' });
+    await B.ctx.addInitScript(d => { if (!localStorage.getItem('fake-db')) localStorage.setItem('fake-db', JSON.stringify(d)); localStorage.setItem('fake-sess', 'u1'); }, db);
+    await B.p.goto(BASE + '/estacion/'); await B.p.waitForTimeout(1200);
+    check((await saldoLocal(B.p)) === (await saldoLocal(A.p)), `nube: la tableta ve el mismo saldo que el móvil (${await saldoLocal(B.p)})`);
+    const ln = await B.p.evaluate(() => __EST.S.led.length);
+    await B.p.evaluate(() => __EST.go('yo')); await B.p.click('[data-grp="casco"]'); await B.p.click('[data-slot="casco"][data-id="gorra"]'); await B.p.click('#cfOk'); await B.p.waitForTimeout(500);
+    check(await B.p.evaluate(() => (window.__FAKEDB.estacion_libro || []).some(x => x.k === 'buy:casco:gorra')), 'nube: una compra en la tableta sube a la cuenta al momento');
+    const db2 = await B.p.evaluate(() => JSON.parse(JSON.stringify(window.__FAKEDB.estacion_libro)));
+    await A.p.evaluate(L => { window.__FAKEDB.estacion_libro = L; return __EST.syncLibro(); }, db2); await A.p.waitForTimeout(200);
+    check((await saldoLocal(A.p)) === (await saldoLocal(B.p)) && await A.p.evaluate(() => __EST.S.led.some(x => x.k === 'buy:casco:gorra')), `nube: el móvil recibe la compra de la tableta y los saldos siguen iguales (${await saldoLocal(A.p)})`);
+    check(await B.p.evaluate(n => __EST.S.led.length === n + 1, ln), 'nube: la tableta no cobra otra vez los logros del móvil');
+    // la base manda: una hucha «recogida» antes de tiempo (p. ej. con una app trucada) se deshace
+    await A.p.evaluate(() => { const n = Date.now(); __EST.S.led.push({ k: 'hucha:trampa:in', e: -50, c: 0, g: '', at: n, x: { d: 14 } }, { k: 'hucha:trampa:out', e: 65, c: 0, g: '', at: n, x: { d: 14, premio: 15 } }); __EST.save(); return __EST.syncLibro(); });
+    await A.p.waitForTimeout(200);
+    const tr = await A.p.evaluate(() => ({ ks: __EST.S.led.map(x => x.k).join(), nube: (window.__FAKEDB.estacion_libro || []).map(x => x.k).join() }));
+    check(/hucha:trampa:in/.test(tr.nube) && !/hucha:trampa:out/.test(tr.nube) && !/hucha:trampa:out/.test(tr.ks), 'nube: la base rechaza recoger una hucha antes de tiempo y la app lo deshace');
+    check(/no era válido/.test(await A.p.textContent('#toast')), 'nube: y avisa');
+    check((await saldoLocal(A.p)) === (await saldoNube(A.p)), 'nube: tras deshacerlo, el saldo vuelve a coincidir con la cuenta');
+    await A.ctx.close(); await B.ctx.close();
+    // sin la tabla aún creada (antes de pasar el SQL 0033): todo sigue en el aparato y no toca la hucha
+    const C = await nuevaPagina(b, VPS[0], { cloud: true, tag: 'libro-C' });
+    await C.ctx.addInitScript(v => { if (!localStorage.getItem('estacion-nil-v1')) localStorage.setItem('estacion-nil-v1', JSON.stringify(v)); localStorage.setItem('fake-sess', 'u1'); localStorage.setItem('fake-sin-libro', '1'); }, VIEJO);
+    await C.p.goto(BASE + '/estacion/'); await C.p.waitForTimeout(1000);
+    const c1 = await C.p.evaluate(() => ({ est: __EST.libroEstado, ks: __EST.S.led.map(x => x.k).join(), mig: !!__EST.S.libroMig }));
+    check(c1.est === 'sin-tabla' && /hucha:viejaB:in/.test(c1.ks) && !c1.mig, 'nube: sin la tabla en Supabase, el monedero sigue en el aparato y la hucha intacta');
+    await C.p.evaluate(() => __EST.go('monedero')); await C.p.waitForTimeout(150);
+    check(/solo en este aparato/.test(await C.p.textContent('#monBox')), 'nube: y el monedero lo dice');
+    await C.ctx.close();
   }
   /* ---------- 2b. Rutinator v3 en /rutinator/: la Estación lo lee del aparato ---------- */
   {

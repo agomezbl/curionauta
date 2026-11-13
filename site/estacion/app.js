@@ -26,7 +26,7 @@ const DEF = { mode: '', device: uid(), links: null, notes: [], localPin: '', cac
   /* yo: avatar por piezas, fondo, títulos que luce (hasta tres), género de los títulos y cuándo ganó cada uno */
   av: null, fondo: 'orbita', tit: [], gen: 'n', titAt: {}, childName: '' };
 let S; try { S = Object.assign({}, DEF, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch (e) { S = Object.assign({}, DEF); }
-['seen', 'qi', 'shown', 'cache', 'hist', 'titAt', 'mias'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
+['seen', 'qi', 'shown', 'cache', 'hist', 'titAt', 'mias', 'borr'].forEach(k => { if (!S[k] || typeof S[k] !== 'object') S[k] = {}; });
 ['bita', 'refl', 'notes', 'pending', 'led', 'tit'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
 S.led = S.led.filter(x => x && typeof x.k === 'string'); S.av = ARTE.limpia(S.av);
 if (![0.5, 0.75, 1, 1.5, 2].includes(S.mult)) S.mult = 1;
@@ -40,9 +40,13 @@ if (!['m', 'f', 'n'].includes(S.gen)) S.gen = 'n';
    (Si algún día se añade «borrar el monedero», habrá que borrarlo también aquí.) */
 function juntaLibro(otro) {
   if (!Array.isArray(otro) || !S || !Array.isArray(S.led)) return 0; const have = new Set(S.led.map(x => x.k)); let n = 0;
-  otro.forEach(x => { if (x && typeof x.k === 'string' && !have.has(x.k)) { S.led.push(x); have.add(x.k); n++; } }); return n;
+  otro.forEach(x => { if (x && typeof x.k === 'string' && !have.has(x.k) && !(S.borr && S.borr[x.k])) { S.led.push(x); have.add(x.k); n++; } }); return n;
 }
-const save = () => { try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o) juntaLibro(o.led); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+function juntaCopia(o) {   // otra copia guardada (otra pestaña): sus apuntes y lo que deshizo
+  if (!o) return 0; if (o.borr && typeof o.borr === 'object') { Object.assign(S.borr, o.borr); S.led = S.led.filter(x => !S.borr[x.k]); }
+  if (o.libroAt && (!S.libroAt || o.libroAt > S.libroAt)) S.libroAt = o.libroAt; return juntaLibro(o.led);
+}
+const save = () => { try { juntaCopia(JSON.parse(localStorage.getItem(KEY) || 'null')); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
 /* ---------------- idioma ---------------- */
 if (S.lang !== 'es' && S.lang !== 'fr') { let n = ''; try { n = (navigator.languages && navigator.languages[0]) || navigator.language || ''; } catch (e) {} S.lang = /^fr/i.test(n) ? 'fr' : 'es'; }
@@ -191,6 +195,10 @@ const I = {
   'hu.amount': ['¿Cuánta Energía guardas?', 'Combien d’Énergie mets-tu de côté ?'], 'hu.term': ['¿Cuántos días?', 'Combien de jours ?'],
   'hu.days': ['{d} días', '{d} jours'], 'hu.preview': ['El {f} recogerás {n} de Energía: tus {a} y {i} de premio.', 'Le {f}, tu récupéreras {n} d’Énergie : tes {a} et {i} de bonus.'],
   'hu.save': ['Guardar en la hucha', 'Mettre dans la tirelire'], 'hu.min': ['Elige una cantidad entre {a} y {b}.', 'Choisis un montant entre {a} et {b}.'],
+  'lib.nube': ['Guardado en tu cuenta: es el mismo monedero en todos tus aparatos.', 'Enregistré dans ton compte : c’est la même bourse sur tous tes appareils.'],
+  'lib.solo': ['De momento este monedero está solo en este aparato.', 'Pour l’instant, cette bourse n’existe que sur cet appareil.'],
+  'lib.devuelto': ['Tu monedero ya está en tu cuenta. La hucha que tenías abierta se ha abierto: tienes tus {n} de Energía de vuelta.', 'Ta bourse est maintenant dans ton compte. La tirelire que tu avais ouverte a été vidée : tu récupères tes {n} d’Énergie.'],
+  'lib.deshecho': ['Un movimiento no era válido y se ha deshecho.', 'Une opération n’était pas valable et a été annulée.'],
   'hu.net': ['La hucha necesita conexión para comprobar la fecha. Conéctate para guardar o recoger.', 'La tirelire a besoin d’une connexion pour vérifier la date. Connecte-toi pour mettre de côté ou récupérer.'],
   'hu.cupo': ['Tu hucha crece con lo que juegas: guarda como mucho lo que has ganado en los últimos 14 días ({n}), y ya tienes {g} guardados. Juega para poder guardar más.', 'Ta tirelire grandit quand tu joues : tu peux y mettre au plus ce que tu as gagné ces 14 derniers jours ({n}), et tu as déjà {g} de côté. Joue pour pouvoir en mettre plus.'],
   'hu.cupoHelp': ['Tu hucha crece con lo que juegas: ahora caben {n} más (lo ganado en los últimos 14 días).', 'Ta tirelire grandit quand tu joues : il y a encore de la place pour {n} (ce que tu as gagné ces 14 derniers jours).'],
@@ -820,6 +828,76 @@ async function flush() {
   } catch (e) { syncDot('off', t('sync.later')); }
   flushing = false;
 }
+/* =================== NUBE: monedero (supabase/0033_monedero.sql) ===================
+   Cada apunte se sube con su clave única: si otro aparato ya lo subió, la base lo ignora. Luego se baja lo que
+   hayan apuntado los otros aparatos. La nube manda: si un apunte está allí, vale el de allí. Si la base rechaza
+   uno por sus reglas (una hucha recogida antes de tiempo, un cambio imposible…), se deshace aquí y se avisa.
+   Si la tabla aún no existe, el monedero sigue en el aparato y se reintenta más tarde. */
+const LIBRO = 'estacion_libro';
+let libroEstado = 'local', libroOcupado = false, libroOtraVez = false;
+const filaLibro = x => ({ k: x.k, e: x.e | 0, c: x.c | 0, g: x.g || '', w: !!x.w, x: x.x || null, at: new Date(x.at || Date.now()).toISOString() });
+const sinTabla = er => /PGRST205|42P01|does not exist|schema cache|Could not find the table/i.test(er ? `${er.code || ''} ${er.message || ''}` : '');
+const porReglas = er => !!er && er.code === 'P0001';            // lo rechazan las reglas de la base: se deshace
+const noCabe = er => !!er && /^(23514|22P02|22003)$/.test(er.code || '');   // no encaja en la tabla: se queda solo aquí
+function deshacer(k) { S.borr[k] = 1; S.led = S.led.filter(x => x.k !== k); }
+/* una sola vez: la base no acepta huchas con fecha de hace días. Las ya recogidas suben como su premio;
+   las abiertas se devuelven (vuelve lo guardado). */
+function pasarHuchasViejas() {
+  if (S.libroMig) return; const lim = Date.now() - 50 * 6e4; let devuelto = 0;
+  ECO.depositos(S.led, Date.now()).forEach(d => {
+    const kin = `hucha:${d.id}:in`, kout = `hucha:${d.id}:out`, vin = S.led.find(x => x.k === kin), vout = S.led.find(x => x.k === kout);
+    if (!vin || vin.up || (vin.at || 0) >= lim) return;
+    if (vout) { const premio = (vout.e || 0) + (vin.e || 0); deshacer(kin); deshacer(kout);
+      if (premio > 0) S.led.push({ k: `hucha:${d.id}:legado`, e: premio, c: 0, g: '', at: vout.at || Date.now(), x: { d: d.d, premio } }); }
+    else { devuelto += -(vin.e || 0); deshacer(kin); }
+  });
+  S.libroMig = 1; save(); if (devuelto) setTimeout(() => toast(t('lib.devuelto', { n: num(devuelto) })), 1200);
+}
+function subeLibro() { if (cloudOn() && !esPadre()) syncLibro().catch(e => console.warn(e)); }
+async function syncLibro() {
+  if (!cloudOn() || esPadre()) return; if (libroOcupado) { libroOtraVez = true; return; }
+  libroOcupado = true; let cambio = false, deshechos = 0;
+  try {
+    const prueba = await sb.from(LIBRO).select('k').eq('member_id', ME.id).limit(1);   // ¿existe ya la tabla?
+    if (prueba.error) { if (sinTabla(prueba.error)) { libroEstado = 'sin-tabla'; return; } throw prueba.error; }
+    pasarHuchasViejas();
+    const subir = async lote => sb.from(LIBRO).upsert(lote.map(filaLibro), { onConflict: 'member_id,k', ignoreDuplicates: true });
+    const pend = S.led.filter(x => !x.up && !x.solo);
+    for (let i = 0; i < pend.length; i += 200) {
+      const lote = pend.slice(i, i + 200), r = await subir(lote);
+      if (r.error && sinTabla(r.error)) { libroEstado = 'sin-tabla'; return; }
+      if (!r.error) { lote.forEach(x => { x.up = 1; }); save(); continue; }
+      if (!porReglas(r.error) && !noCabe(r.error)) throw r.error;
+      for (const x of lote) {          // alguno no vale: de uno en uno para saber cuál
+        const r1 = await subir([x]);
+        if (!r1.error) x.up = 1;
+        else if (porReglas(r1.error) && deshechos < 10) { console.warn('monedero: la base no acepta', x.k, r1.error.message); deshacer(x.k); deshechos++; cambio = true; }
+        else if (noCabe(r1.error)) x.solo = 1;
+        else throw r1.error;
+      }
+      save();
+    }
+    for (let vuelta = 0; vuelta < 50; vuelta++) {    // bajar lo nuevo (de 1000 en 1000)
+      const { data, error } = await sb.from(LIBRO).select('k,e,c,g,w,x,at,created_at').eq('member_id', ME.id).gt('created_at', S.libroAt || '1970-01-01T00:00:00Z').order('created_at', { ascending: true }).limit(1000);
+      if (error) { if (sinTabla(error)) { libroEstado = 'sin-tabla'; return; } throw error; }
+      const idx = new Map(S.led.map((x, i) => [x.k, i]));
+      (data || []).forEach(rw => {
+        if (S.borr[rw.k]) delete S.borr[rw.k];
+        const v = { k: rw.k, e: rw.e | 0, c: rw.c | 0, g: rw.g || '', at: Date.parse(rw.at) || Date.now(), up: 1 }; if (rw.w) v.w = 1; if (rw.x) v.x = rw.x;
+        const i = idx.get(rw.k);
+        if (i == null) { S.led.push(v); idx.set(rw.k, S.led.length - 1); cambio = true; }
+        else { const o = S.led[i]; if (o.e !== v.e || o.c !== v.c) cambio = true; S.led[i] = v; }
+        if (!S.libroAt || rw.created_at > S.libroAt) S.libroAt = rw.created_at;
+      });
+      save(); if (!data || data.length < 1000) break;
+    }
+    libroEstado = 'nube'; if (!S.libroOk) { S.libroOk = 1; save(); }
+  } finally { libroOcupado = false; }
+  if (deshechos) toast(t('lib.deshecho'));
+  if (cambio) { titulosNuevos(); save(); renderWallet(); renderHero(); renderNuevo(); renderGames(); renderView(); }
+  else if (VIEW === 'monedero') renderMonedero();
+  if (libroOtraVez) { libroOtraVez = false; return syncLibro(); }
+}
 async function pullItems() {
   const { data, error } = await sb.from('estacion_items').select('*').eq('member_id', ME.id); if (error) throw error;
   const pend = new Set(S.pending.filter(o => o.t === 'up').map(o => o.row.id)), gone = new Set(S.pending.filter(o => o.t === 'del').map(o => o.id));
@@ -963,7 +1041,7 @@ function apuntar() {
   const now = Date.now(), d = hoy(), have = new Set(S.led.map(x => x.k)), nuevos = [], primera = !S.ecoAt;
   const add = (k, e, c, g) => { if (have.has(k)) return; const x = { k, e: ECO.escala(e || 0, S.mult), c: c || 0, g: g || '', at: now }; if (primera) x.w = 1; S.led.push(x); have.add(k); nuevos.push(x); };
   let cand = []; try { cand = ECO.logros(ECO.hechos(read)); } catch (e) { cand = []; }
-  try { cand = cand.concat(ECO.logrosReflexion(S.refl.filter(r => S.mias[r.id]), ymd)); } catch (e) {}
+  try { cand = cand.concat(ECO.logrosReflexion(S.refl.filter(r => S.mias[r.id] || S.libroOk), ymd)); } catch (e) {}
   cand.forEach(a => { LBL[a.k] = a.l; add(a.k, a.e, a.c, a.g); });
   if (!primera && avances.length) { const of = ofertaHoy(); avances.forEach(g => { add(`dia:${d}:${g}`, ECO.V.dia, 0, g); if (g === of) add(`oferta:${d}`, ECO.V.oferta, 0, g); }); }
   avances = [];
@@ -976,13 +1054,13 @@ function apuntar() {
 function mover(x) {
   if (S.led.some(y => y.k === x.k)) return false;
   S.led.push(Object.assign({ e: 0, c: 0, g: '', at: Date.now() }, x));
-  const nt = titulosNuevos(); save(); renderWallet(); renderHero(); renderNuevo();
+  const nt = titulosNuevos(); save(); renderWallet(); renderHero(); renderNuevo(); subeLibro();
   if (nt.length) setTimeout(() => toast(`${t('new.title')}: ${tituloTxt(nt[0])}`), 3000);
 }
 const tituloTxt = id => { const x = ECO.TITULOS.find(y => y.id === id); return x ? ECO.nombreTitulo(x, L, S.gen) : ''; };
 /* apunta lo nuevo y avisa con un mensaje corto */
 function ganar(quiet) {
-  const r = apuntar();
+  const r = apuntar(); if (r.nuevos.length) subeLibro();
   if (!quiet && (r.nuevos.length || r.titulos.length)) { renderWallet(); renderHero(); renderNuevo(); renderGames(); if (VIEW !== 'inicio') renderView(); }
   if (!r.primera && r.nuevos.length) {
     const e = r.nuevos.reduce((a, x) => a + x.e, 0), c = r.nuevos.reduce((a, x) => a + x.c, 0);
@@ -1072,6 +1150,7 @@ function renderMonedero() {
       <div class="bal"><div class="bl e">${SVG_E}<b id="balE">${num(s.e)}</b><span>${esc(t('w.energy'))}</span><small>${esc(t('mon.eHelp'))}</small></div>
         <div class="bl c">${SVG_C}<b id="balC">${num(s.c)}</b><span>${esc(t('w.crystals'))}</span><small>${esc(t('mon.cHelp'))}</small></div>
         <div class="bl h">${SVG_H}<b id="balH">${num(enH)}</b><span>${esc(t('mon.saved'))}</span><small>${esc(t('mon.savedHelp'))}</small></div></div>
+      <p class="muted small" id="libDonde" style="margin:12px 0 0">${esc(t(libroEstado === 'nube' ? 'lib.nube' : 'lib.solo'))}</p>
       <details class="how"><summary>${esc(t('how.title'))}</summary><ul>${[1, 2, 3, 4, 5].map(i => `<li>${esc(t('how.' + i))}</li>`).join('')}</ul></details></section>
     <section class="card c-mercado"><h2><span class="ico">${SVG_C}</span>${esc(t('mk.title'))}</h2>
       <div class="mk"><span>${esc(t('mk.price'))}</span>${cur(p, 'e')}<small class="muted">${p > ayer ? '▲' : p < ayer ? '▼' : '='} ${esc(t('mk.yest', { p: ayer }))}</small></div>
@@ -1231,7 +1310,7 @@ function renderAll() {
 async function refresh() {
   if (!cloudOn()) { syncDot('', t('sync.local')); return; }
   syncDot('', t('sync.busy'));
-  try { await flush(); await pullItems(); await pullRefl(); await pullRutinator(); await pushProgress(); syncDot(S.pending.length ? 'off' : 'ok', S.pending.length ? t('sync.wait') : t('sync.ok')); }
+  try { await flush(); await pullItems(); await pullRefl(); await pullRutinator(); await pushProgress(); await syncLibro(); ganar(); syncDot(S.pending.length ? 'off' : 'ok', S.pending.length ? t('sync.wait') : t('sync.ok')); }
   catch (e) { console.warn(e); syncDot('off', t('sync.off')); }
   renderAll();
 }
@@ -1294,9 +1373,9 @@ function install() {
 setInterval(tick, 15000); setInterval(() => { if (!document.hidden) renderHoy(); }, 60000); setInterval(() => { if (!document.hidden) refresh(); }, 300000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('#main').hidden) { sincronizaHora(); if (detect()) renderMentor(); ganar(); if (loadRut()) { renderHoy(); renderRut(); } renderGames(); refresh(); } });
 addEventListener('online', () => { sincronizaHora(); refresh(); }); addEventListener('offline', () => syncDot('off', t('sync.offline')));
-addEventListener('storage', e => { if (e.key === KEY && !$('#main').hidden) { try { const o = JSON.parse(e.newValue || 'null'); if (o && juntaLibro(o.led)) { renderWallet(); renderHero(); renderNuevo(); renderView(); } } catch (x) {} return; }
+addEventListener('storage', e => { if (e.key === KEY && !$('#main').hidden) { try { const o = JSON.parse(e.newValue || 'null'); if (o && juntaCopia(o)) { renderWallet(); renderHero(); renderNuevo(); renderView(); } } catch (x) {} return; }
   if (e.key && e.key !== KEY && !$('#main').hidden) { if (e.key === RUT3 && loadRut()) { renderHoy(); renderRut(); } if (detect()) renderMentor(); ganar(); renderGames(); } });
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 start();
-window.__EST = { get S() { return S; }, horaFiable, sincronizaHora, GAMES, ECO, ARTE, renderAll, detect, ganar, go, save, ymd, setLang, get VIEW() { return VIEW; }, get ME() { return ME; } };
+window.__EST = { get S() { return S; }, horaFiable, sincronizaHora, syncLibro, get libroEstado() { return libroEstado; }, GAMES, ECO, ARTE, renderAll, detect, ganar, go, save, ymd, setLang, get VIEW() { return VIEW; }, get ME() { return ME; } };
 })();

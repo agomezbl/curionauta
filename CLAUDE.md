@@ -10,7 +10,8 @@ lea el progreso de cada juego desde `localStorage`.
 - `site/index.html`, `site/fr/`, `site/legal/`, `site/estilo.css`, `site/404.html` **se generan** con `python3 tools/paginas.py`: no editar a mano.
 - `site/comun/volver.js` → pestaña «Volver a la Estación» que `montar.sh` inyecta en cada juego.
 - `tools/montar.sh` → copia `site/` a `dist/` y descarga los juegos de sus repos (`LOCAL=/home/claude` usa clones locales).
-- `supabase/` → `0031_estacion.sql`, `0032_cuaderno.sql` (**ya ejecutados** en Supabase el 10/11/2026).
+- `supabase/` → `0031_estacion.sql`, `0032_cuaderno.sql` (**ya ejecutados** en Supabase el 10/11/2026) y `0033_monedero.sql`
+  (monedero en la nube; **pendiente de que Alejandro lo ejecute**: hasta entonces la app sigue con el monedero en el aparato).
 - `voces/` + `tools/voces-*.js` → inventario y grabación de voces de los mentores (ElevenLabs, pendiente).
 - `docs/PUBLICAR.md` (publicación) y `docs/COMO-TRABAJAMOS.md` (método de trabajo con Alejandro).
 
@@ -41,21 +42,26 @@ y sus logros, saberes y títulos en `economia.js`.
 - Para cambiar cuánto vale algo: tabla `V` y compañía al principio de `economia.js`. Precios de piezas y fondos: `arte.js`.
   El padre escala los logros nuevos de ×0,5 a ×2 en Zona de padres → Ajustes.
 - Los fondos son CSS puro (`.fx.f-<id>` en `estacion.css`); el avatar es SVG generado en `arte.js`. Sin imágenes externas.
-- **El monedero vive en cada aparato** (móvil y tableta llevan cuentas separadas) hasta hacer la base Supabase multifamilia.
+- **Monedero en la nube** (`0033`, tabla `estacion_libro`, clave `(member_id, k)`): `syncLibro()` en app.js sube lo nuevo
+  (`upsert` con `ignoreDuplicates`), baja lo de los otros aparatos (`created_at > S.libroAt`) y la nube manda.
+  La base no deja cambiar ni borrar apuntes y comprueba con SU hora la hucha, el mercado y las compras; lo que rechaza
+  (código P0001) se deshace en la app y se avisa. Sin la tabla (`PGRST205`), todo sigue en el aparato.
+  Al pasar a la nube, `pasarHuchasViejas()` convierte una vez las huchas viejas (recogidas → `hucha:<id>:legado` con su premio; abiertas → se devuelven).
+  Sin cuenta (modo local) el monedero sigue en el aparato.
 - Hucha: la hora la da el servidor (`sincronizaHora`: cabecera Date + `performance.now()`), así que tocar el reloj del aparato no sirve;
   sin conexión no deja guardar ni recoger. Lo guardado a la vez ≤ lo ganado jugando en 14 días (`cupoHucha`, máx. 500).
 - Varias pestañas: `save()` junta el libro con lo guardado (`juntaLibro`). El libro solo crece: un «borrar monedero» futuro debe tenerlo en cuenta.
-- Reflexiones: se pagan solo en el aparato donde se escribieron (`S.mias`).
+- Reflexiones: sin nube, se pagan solo en el aparato donde se escribieron (`S.mias`); con nube, la clave única basta.
 - Aún no hecho: privilegios reales con aprobación del padre; gastar puntos en El Refugio y en UMBRAL.
 
 ## Pruebas (deben pasar antes de subir)
 ```
-LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 239 comprobaciones, navegador real
+LOCAL=/home/claude bash tools/montar.sh && node tools/test.js     # 253 comprobaciones, navegador real
 node tools/test-economia.js                                        # las cuentas: logros, mercado, hucha, títulos, pasaporte (46)
 node tools/test-mudanza.js ../estacion-nil                         # aviso de la Estación antigua → la nueva
 node tools/test-refugio.js                                         # El Refugio: los tres retos tocando la escena, y el francés (47)
 AXE=/ruta/axe.min.js node tools/test-accesibilidad.js              # WCAG 2.1 AA
-PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de Supabase sobre Postgres local
+PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de Supabase sobre Postgres local (50, con el monedero)
 ```
 
 ## Pendiente (nov 2026)
