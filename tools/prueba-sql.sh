@@ -1,5 +1,5 @@
 #!/bin/bash
-# Prueba las migraciones 0031, 0032 y 0033 en un Postgres local de usar y tirar.
+# Prueba las migraciones 0031, 0032, 0033 y el panel de uso en un Postgres local de usar y tirar.
 # Uso: PGHOST=/ruta/socket PGPORT=5499 bash tools/prueba-sql.sh
 set -e
 cd "$(dirname "$0")/.."
@@ -87,5 +87,17 @@ espera "el padre ve el libro de Nil" "9" "$(q -c "$(como $PAPA "select count(*) 
 espera "otra familia no lo ve" "0" "$(q -c "$(como $OTRO "select count(*) from estacion_libro")" | sed -n 2p)"
 espera "anon no ve el monedero" "ERROR" "$(q -c "begin; set local role anon; select count(*) from estacion_libro; commit;" 2>&1 | grep -o ERROR | head -1)"
 espera "saldo de Nil en la nube" "-56|1" "$(q -c "select sum(e)||'|'||sum(c) from estacion_libro")"
+# ---------- panel de uso (solo para el responsable, desde el SQL Editor) ----------
+q -f supabase/panel-de-uso.sql >/dev/null
+q -f supabase/panel-de-uso.sql >/dev/null   # dos veces: no debe romper nada
+espera "panel: 3 cuentas, 2 familias, 1 adulto, 2 niños" "3|2|1|2" "$(q -c "select cuentas||'|'||familias||'|'||adultos||'|'||ninos from panel.resumen()")"
+espera "panel: Nil cuenta como niño activo hoy y esta semana" "1|1" "$(q -c "select ninos_activos_hoy||'|'||ninos_activos_7_dias from panel.resumen()")"
+espera "panel: la familia de Nil, primera, con su correo y su niño" "Papá|papa@ejemplo.test|Nil" "$(q -c "select adulto||'|'||correo||'|'||ninos from panel.familias() limit 1")"
+espera "panel: la otra familia sale aunque no haya hecho nada" "2" "$(q -c "select count(*) from panel.familias()")"
+espera "panel: 30 días por defecto" "30" "$(q -c "select count(*) from panel.dias()")"
+espera "panel: hoy hay logros apuntados" "t" "$(q -c "select logros > 0 from panel.dias() where dia = current_date")"
+espera "panel: una familia no puede usarlo" "ERROR" "$(q -c "$(como $PAPA "select * from panel.resumen()")" 2>&1 | grep -o ERROR | head -1)"
+espera "panel: anon no puede usarlo" "ERROR" "$(q -c "begin; set local role anon; select * from panel.familias(); commit;" 2>&1 | grep -o ERROR | head -1)"
+espera "panel: un niño no puede leer la vista de actividad" "ERROR" "$(q -c "$(como $NIL "select count(*) from panel.actividad")" 2>&1 | grep -o ERROR | head -1)"
 psql -U postgres -qc "drop database $DB" >/dev/null
 echo "$ok bien, $mal mal"; [ $mal -eq 0 ]

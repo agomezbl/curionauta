@@ -8,6 +8,11 @@ create schema if not exists auth;
 create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 grant usage on schema auth, public to anon, authenticated;
 grant execute on function auth.uid() to anon, authenticated;
+create table if not exists auth.users (id uuid primary key, email text, created_at timestamptz not null default now(), last_sign_in_at timestamptz);
+insert into auth.users (id, email, created_at, last_sign_in_at) values
+ ('10000000-0000-0000-0000-000000000001', 'papa@ejemplo.test', now() - interval '20 days', now() - interval '1 day'),
+ ('10000000-0000-0000-0000-000000000002', 'nil@ejemplo.test', now() - interval '20 days', now()),
+ ('10000000-0000-0000-0000-000000000003', 'otro@ejemplo.test', now() - interval '3 days', null);
 create table family_members (id uuid primary key, family_id uuid not null, auth_user_id uuid, display_name text, role text);
 grant select on family_members to authenticated;
 create function app_family_id() returns uuid language sql stable security definer set search_path = public, pg_temp as $$ select family_id from family_members where auth_user_id = auth.uid() limit 1 $$;

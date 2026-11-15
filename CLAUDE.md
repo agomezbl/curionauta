@@ -12,6 +12,7 @@ lea el progreso de cada juego desde `localStorage`.
 - `tools/montar.sh` → copia `site/` a `dist/` y descarga los juegos de sus repos (`LOCAL=/home/claude` usa clones locales).
 - `supabase/` → `0031_estacion.sql`, `0032_cuaderno.sql` (**ya ejecutados** en Supabase el 10/11/2026) y `0033_monedero.sql`
   (monedero en la nube; **pendiente de que Alejandro lo ejecute**: hasta entonces la app sigue con el monedero en el aparato).
+  `panel-de-uso.sql`: esquema `panel` (resumen, familias, dias) solo para el SQL Editor; cuenta y fecha, no lee contenido.
 - `voces/` + `tools/voces-*.js` → inventario y grabación de voces de los mentores (ElevenLabs, pendiente).
 - `docs/PUBLICAR.md` (publicación) y `docs/COMO-TRABAJAMOS.md` (método de trabajo con Alejandro).
 
@@ -61,7 +62,7 @@ node tools/test-economia.js                                        # las cuentas
 node tools/test-mudanza.js ../estacion-nil                         # aviso de la Estación antigua → la nueva
 node tools/test-refugio.js                                         # El Refugio: los tres retos tocando la escena, y el francés (47)
 AXE=/ruta/axe.min.js node tools/test-accesibilidad.js              # WCAG 2.1 AA
-PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de Supabase sobre Postgres local (50, con el monedero)
+PGHOST=/socket PGPORT=5499 bash tools/prueba-sql.sh                # reglas de Supabase sobre Postgres local (59, con el monedero y el panel)
 ```
 
 ## Pendiente (nov 2026)
